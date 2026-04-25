@@ -54,6 +54,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 }
 #lima-label{display:none}
 /* Canvas wave — posicionado sobre la cara */
+#circuit-bg{position:fixed;z-index:0;pointer-events:none;top:0;left:0;width:100vw;height:100vh}
 #wave-canvas{position:fixed;z-index:2;pointer-events:none;top:0;left:0;width:100vw;height:100vh}
 
 /* Glow de estado sobre la imagen */
@@ -103,35 +104,43 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 
 /* ── SIDE BUTTONS ── */
 .side-col{
-  position:fixed;top:50%;transform:translateY(-40%);
-  z-index:20;display:flex;flex-direction:column;gap:10px;
+  position:fixed;top:0;bottom:0;
+  z-index:20;display:flex;flex-direction:column;
+  justify-content:space-evenly;
+  padding:72px 0 195px;
 }
-#side-left{left:8px}
-#side-right{right:8px;align-items:flex-end}
+#side-left{left:6px}
+#side-right{right:6px;align-items:flex-end}
 
 .sbtn{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-  width:62px;height:62px;border-radius:16px;
-  border:1px solid var(--border);
-  background:rgba(13,1,24,.6);
-  backdrop-filter:blur(12px);
-  color:var(--muted);cursor:pointer;
-  transition:all .2s;user-select:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  width:68px;height:72px;border-radius:14px;
+  border:1px solid rgba(0,210,255,.22);
+  background:rgba(0,5,20,.65);
+  backdrop-filter:blur(14px);
+  color:rgba(0,200,255,.6);cursor:pointer;
+  transition:all .22s;user-select:none;
   -webkit-tap-highlight-color:transparent;
+  box-shadow:0 0 8px rgba(0,150,255,.08),inset 0 0 12px rgba(0,100,255,.04);
 }
-.sbtn:active{transform:scale(.9) !important;background:rgba(139,92,246,.2)}
-.sbtn .ico{font-size:20px;line-height:1}
-.sbtn .lbl{font-size:7px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;line-height:1.2}
+.sbtn:active{transform:scale(.88) !important;background:rgba(0,180,255,.15)}
+.sbtn .ico{font-size:22px;line-height:1;filter:drop-shadow(0 0 4px rgba(0,200,255,.5))}
+.sbtn .lbl{font-size:6.5px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;line-height:1.2;color:rgba(150,220,255,.8)}
 .sbtn:hover,.sbtn.active{
-  border-color:var(--p);background:rgba(139,92,246,.2);
-  color:var(--pL);box-shadow:0 0 16px rgba(139,92,246,.3)
+  border-color:rgba(0,220,255,.6);background:rgba(0,150,255,.18);
+  color:#00e5ff;box-shadow:0 0 20px rgba(0,200,255,.35),inset 0 0 10px rgba(0,180,255,.1);
 }
-.sbtn.panic-btn{border-color:rgba(239,68,68,.35);color:rgba(239,68,68,.8)}
+.sbtn.panic-btn{border-color:rgba(239,68,68,.4);color:rgba(239,68,68,.8)}
+.sbtn.panic-btn .lbl{color:rgba(255,150,150,.8)}
 .sbtn.panic-btn:hover,.sbtn.panic-btn.active{
-  background:rgba(239,68,68,.15);border-color:var(--red);
-  color:var(--red);box-shadow:0 0 16px rgba(239,68,68,.35)
+  background:rgba(239,68,68,.18);border-color:var(--red);
+  color:var(--red);box-shadow:0 0 20px rgba(239,68,68,.4)
 }
-.sbtn.locked{opacity:.28;pointer-events:none}
+.sbtn.locked{opacity:.22;pointer-events:none}
+.alarma-status{font-size:5.5px;letter-spacing:1.5px;text-transform:uppercase;font-weight:800;padding:1px 4px;border-radius:4px;transition:all .4s;background:rgba(0,200,255,.1);color:rgba(0,200,255,.5);border:1px solid rgba(0,200,255,.2)}
+.alarma-status.arm{background:rgba(239,68,68,.18);color:#f87171;border-color:rgba(239,68,68,.5)}
+.alarma-status.des{background:rgba(16,185,129,.15);color:#34d399;border-color:rgba(16,185,129,.5)}
+.alarma-status.pan{background:rgba(245,158,11,.18);color:#fbbf24;border-color:rgba(245,158,11,.5);animation:blink-d .5s infinite alternate}
 
 /* Estado LIMA label debajo del centro */
 #lima-state-lbl{
@@ -345,6 +354,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 <!-- AVATAR FULLSCREEN -->
 <div id="avatar-bg"></div>
 <canvas id="lima-sphere"></canvas>
+<canvas id="circuit-bg"></canvas>
 <canvas id="wave-canvas"></canvas>
 <div id="avatar-glow"></div>
 
@@ -352,7 +362,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 <div id="header">
   <div><div id="hdr-name">LIMA</div><div id="hdr-sub">LIMEN Seguridad</div></div>
   <div id="hdr-center">
-    <div id="estado-badge"><div id="estado-dot"></div><div id="estado-txt">—</div></div>
+    <div id="estado-badge" style="display:none"><div id="estado-dot"></div><div id="estado-txt">—</div></div>
   </div>
   <div id="hdr-right">
     <div id="hdr-hora">--:--</div>
@@ -368,6 +378,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 <div class="side-col" id="side-left">
   <button class="sbtn" id="sbtn-alarma" onclick="accionBtn('alarma')">
     <span class="ico">🔔</span><span class="lbl">Mi Alarma</span>
+    <span id="alarma-status" class="alarma-status">—</span>
   </button>
   <button class="sbtn" id="sbtn-hogar" onclick="accionBtn('hogar')">
     <span class="ico">🏠</span><span class="lbl">Mi Hogar</span>
@@ -528,7 +539,7 @@ const MAT_CHARS = '01アイウエオカキクΑΒΓΔΩ∑∆∇∞⌬◈△⊕�
 const matrixCols = []
 function initMatrix() {
   matrixCols.length = 0
-  const nCols = IS_MOBILE ? 7 : 14
+  const nCols = IS_MOBILE ? 12 : 22
   for (let i = 0; i < nCols; i++) {
     matrixCols.push({
       xOff:  -1.0 + (i / (nCols - 1)) * 2.0,
@@ -566,6 +577,66 @@ function initSphereCanvas() {
 }
 window.addEventListener('resize', initSphereCanvas)
 
+// ════════════════════════════════════════════════════
+//  CIRCUIT BACKGROUND
+// ════════════════════════════════════════════════════
+const cbCanvas = document.getElementById('circuit-bg')
+const cbCtx    = cbCanvas ? cbCanvas.getContext('2d') : null
+
+function initCircuitBg() {
+  if (!cbCtx) return
+  const dpr = window.devicePixelRatio || 1
+  cbCanvas.width  = window.innerWidth  * dpr
+  cbCanvas.height = window.innerHeight * dpr
+  cbCtx.setTransform(1,0,0,1,0,0)
+  cbCtx.scale(dpr, dpr)
+  drawCircuitBg()
+}
+window.addEventListener('resize', initCircuitBg)
+
+function drawCircuitBg() {
+  if (!cbCtx) return
+  const W = window.innerWidth, H = window.innerHeight
+  cbCtx.clearRect(0,0,W,H)
+  const gridSize = IS_MOBILE ? 55 : 70
+  const nodes = []
+  // Grid de puntos
+  for (let x = 0; x < W; x += gridSize) {
+    for (let y = 0; y < H; y += gridSize) {
+      const jx = x + (Math.random()-0.5)*16
+      const jy = y + (Math.random()-0.5)*16
+      if (Math.random() < 0.55) nodes.push({x:jx, y:jy})
+    }
+  }
+  // Líneas de circuito horizontales/verticales
+  cbCtx.strokeStyle = 'rgba(0,180,255,0.07)'
+  cbCtx.lineWidth = 1
+  nodes.forEach(n => {
+    if (Math.random() < 0.5) {
+      const len = (Math.random() < 0.5 ? 1 : -1) * (40 + Math.random()*80)
+      cbCtx.beginPath()
+      cbCtx.moveTo(n.x, n.y)
+      cbCtx.lineTo(n.x + len, n.y)
+      cbCtx.stroke()
+    }
+    if (Math.random() < 0.5) {
+      const len = (Math.random() < 0.5 ? 1 : -1) * (30 + Math.random()*60)
+      cbCtx.beginPath()
+      cbCtx.moveTo(n.x, n.y)
+      cbCtx.lineTo(n.x, n.y + len)
+      cbCtx.stroke()
+    }
+    // Nodo
+    if (Math.random() < 0.4) {
+      cbCtx.beginPath()
+      cbCtx.arc(n.x, n.y, 1.5, 0, Math.PI*2)
+      cbCtx.fillStyle = 'rgba(0,200,255,0.18)'
+      cbCtx.fill()
+    }
+  })
+}
+initCircuitBg()
+
 function lerpColor(cur, target, t) {
   cur.r += (target.r - cur.r) * t
   cur.g += (target.g - cur.g) * t
@@ -596,7 +667,7 @@ function drawSphere(ts) {
   const baseR = sphere.radius * pulseMult
 
   // ── Halo suave alrededor de la esfera ──
-  const glowR  = baseR * (2.5 + sphere.energy * 1.0)
+  const glowR  = baseR * (3.8 + sphere.energy * 2.0)
   const glowOuter = sCtx.createRadialGradient(cx, cy, 0, cx, cy, glowR)
   glowOuter.addColorStop(0,   `rgba(255,255,255,${0.12 + sphere.energy * 0.10})`)
   glowOuter.addColorStop(0.5, `rgba(255,255,255,${0.04 + sphere.energy * 0.04})`)
@@ -623,6 +694,70 @@ function drawSphere(ts) {
   sCtx.strokeStyle = 'rgba(255,255,255,0.4)'
   sCtx.lineWidth = 1.5
   sCtx.stroke()
+
+  // ── LIMA text en el centro ──
+  sCtx.save()
+  sCtx.font = `bold ${(coreR * 0.55)|0}px 'Segoe UI', monospace`
+  sCtx.textAlign = 'center'
+  sCtx.textBaseline = 'middle'
+  sCtx.shadowColor = `rgba(${r|0},${g|0},${b|0},1)`
+  sCtx.shadowBlur = 18
+  sCtx.fillStyle = 'rgba(255,255,255,0.95)'
+  sCtx.fillText('LIMA', cx, cy)
+  sCtx.restore()
+
+  // ── Diamante de circuito alrededor de la esfera ──
+  ;(function drawCircuitDiamond() {
+    const dW = baseR * 1.1
+    const dH = baseR * 0.75
+    const pts = [[0,-dH],[dW,0],[0,dH],[-dW,0]]
+    const lineAlpha = 0.65 + sphere.energy * 0.35
+    sCtx.save()
+    sCtx.translate(cx, cy)
+    // Diamante principal
+    sCtx.beginPath()
+    pts.forEach(([px,py],i) => i===0 ? sCtx.moveTo(px,py) : sCtx.lineTo(px,py))
+    sCtx.closePath()
+    sCtx.shadowColor = 'rgba(0,220,255,0.9)'
+    sCtx.shadowBlur = 16
+    sCtx.strokeStyle = `rgba(0,220,255,${lineAlpha})`
+    sCtx.lineWidth = 1.8
+    sCtx.stroke()
+    // Nodos en vértices
+    pts.forEach(([px,py]) => {
+      sCtx.beginPath(); sCtx.arc(px,py,4+sphere.energy*2,0,Math.PI*2)
+      sCtx.fillStyle = 'rgba(255,255,255,0.95)'; sCtx.shadowBlur = 20; sCtx.fill()
+    })
+    // Líneas de circuito radiales desde vértices
+    pts.forEach(([px,py]) => {
+      const angle = Math.atan2(py,px)
+      const ext = baseR * 0.35
+      sCtx.beginPath()
+      sCtx.moveTo(px,py)
+      sCtx.lineTo(px + Math.cos(angle)*ext, py + Math.sin(angle)*ext)
+      sCtx.strokeStyle = `rgba(0,220,255,${lineAlpha*0.5})`
+      sCtx.lineWidth = 1
+      sCtx.shadowBlur = 6
+      sCtx.stroke()
+      // Nodo exterior
+      sCtx.beginPath(); sCtx.arc(px+Math.cos(angle)*ext, py+Math.sin(angle)*ext, 2.5, 0, Math.PI*2)
+      sCtx.fillStyle = `rgba(0,220,255,0.8)`; sCtx.fill()
+    })
+    // Cruz interna
+    const inner = baseR * 0.52
+    ;[0,1].forEach(ax => {
+      const a = ax * Math.PI/2
+      sCtx.beginPath()
+      sCtx.moveTo(Math.cos(a)*inner*0.25, Math.sin(a)*inner*0.25)
+      sCtx.lineTo(Math.cos(a)*inner, Math.sin(a)*inner)
+      sCtx.strokeStyle = `rgba(160,32,255,${lineAlpha*0.6})`
+      sCtx.lineWidth = 1
+      sCtx.shadowColor = 'rgba(160,32,255,0.8)'
+      sCtx.shadowBlur = 8
+      sCtx.stroke()
+    })
+    sCtx.restore()
+  })()
 
   // ── Anillos orbitales neon ──
   sCtx.save()
@@ -791,7 +926,7 @@ function drawSphere(ts) {
   sCtx.restore()
 
   // ── Anillos orbitales extra ──
-  const nRings = IS_MOBILE ? 2 : 3
+  const nRings = IS_MOBILE ? 3 : 4
   for (let ri = 0; ri < nRings; ri++) {
     const rot = sphere.rotation * (0.6 + ri * 0.35) + ri * Math.PI * 0.4
     sCtx.save()
@@ -984,9 +1119,9 @@ const MC = 'アイウエオカキクケコサシスセソタチツテトナニ�
            '!@#$%&*<>{}[]|/\\~\u00b1\u00a7\u00a5\u20ac\u03a9\u0394\u03a3\u221e\u221a\u03c0\u2260\u2248\u2591\u2592\u2593\u2588'
 
 const MRINGS = [
-  { rOff:55,  n:38,  spd:.0018, dir: 1,  sz:11, baseA:.55 },
-  { rOff:105, n:58,  spd:.0011, dir:-1,  sz:12, baseA:.40 },
-  { rOff:160, n:76,  spd:.0007, dir: 1,  sz:13, baseA:.28 },
+  { rOff:48,  n:42,  spd:.0024, dir: 1,  sz:14, baseA:.90 },
+  { rOff:108, n:64,  spd:.0015, dir:-1,  sz:15, baseA:.68 },
+  { rOff:172, n:82,  spd:.0009, dir: 1,  sz:15, baseA:.46 },
 ]
 const ringChars  = MRINGS.map(r => Array.from({length:r.n}, ()=> MC[Math.floor(Math.random()*MC.length)]))
 const ringAngles = [0, Math.PI*.4, Math.PI*.8]
@@ -1077,7 +1212,10 @@ function drawWave(ts) {
       const y   = cy + Math.sin(a) * r
       const osc = 0.5 + 0.5 * Math.sin(a * 3 + Date.now() * .0008)
       const alpha = ring.baseA * osc * (wState === 'idle' ? .6 : 1)
-      wCtx.fillStyle   = 'rgba(0,200,255,' + alpha + ')'
+      const ringColors = ['160,32,255', '0,210,255', '200,60,255']
+      wCtx.shadowColor = 'rgba(' + ringColors[ri] + ',0.8)'
+      wCtx.shadowBlur  = ri === 0 ? 8 : 4
+      wCtx.fillStyle   = 'rgba(' + ringColors[ri] + ',' + alpha + ')'
       wCtx.textAlign   = 'center'
       wCtx.textBaseline= 'middle'
       wCtx.save()
@@ -1095,6 +1233,14 @@ function drawWave(ts) {
 function setEstado(estado, label) {
   document.body.className = 'st-' + estado
   document.getElementById('estado-txt').textContent = label.toUpperCase()
+  const aS = document.getElementById('alarma-status')
+  if (aS) {
+    aS.className = 'alarma-status'
+    if (estado === 'armado')    { aS.classList.add('arm'); aS.textContent = '● ARMADO' }
+    else if (estado === 'desarmado') { aS.classList.add('des'); aS.textContent = '● DESARMADO' }
+    else if (estado === 'panico')    { aS.classList.add('pan'); aS.textContent = '⚠ PÁNICO' }
+    else { aS.textContent = '—' }
+  }
 }
 
 // ════════════════════════════════════════════════════
