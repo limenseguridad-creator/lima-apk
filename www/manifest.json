@@ -1,0 +1,26 @@
+{
+  "name": "LIMA · Asistente IA",
+  "short_name": "LIMA",
+  "description": "Asistente IA LIMEN Seguridad",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0118",
+  "theme_color": "#0d0118",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/img/lima_frente.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/lima_frente.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "security"],
+  "lang": "es"
+}

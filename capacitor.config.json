@@ -1,0 +1,12 @@
+{
+  "appId": "com.limenseguridad.lima",
+  "appName": "LIMA",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

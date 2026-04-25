@@ -1,0 +1,2036 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LIMA">
+<meta name="theme-color" content="#0d0118">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/img/lima_frente.png">
+<title>LIMA · Asistente IA</title>
+<style>
+:root{
+  --bg:#0d0118;--bg2:#130524;--bg3:#1c0a35;
+  --border:rgba(139,92,246,.22);
+  --p:#8b5cf6;--pL:#c084fc;--pD:#5b21b6;
+  --green:#10b981;--red:#ef4444;--orange:#f59e0b;--cyan:#06b6d4;
+  --text:#ede9fe;--muted:#7c6ea8;
+  --glass:rgba(13,1,24,.55);--glassB:rgba(139,92,246,.18);
+  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif}
+
+/* ── LOGIN ── */
+#login{position:fixed;inset:0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:24px;background:radial-gradient(ellipse at 50% 30%,#1a0538 0%,var(--bg) 65%)}
+#login.hide{display:none}
+.login-avatar{width:140px;height:140px;position:relative;margin-bottom:16px;border-radius:0}
+.login-avatar img{width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid rgba(139,92,246,.3)}
+.login-avatar::after{content:'';position:absolute;inset:-8px;border-radius:14px;border:1px solid rgba(139,92,246,.2);animation:spin-s 12s linear infinite;pointer-events:none}
+@keyframes spin-s{to{transform:rotate(360deg)}}
+.login-title{font-size:32px;font-weight:800;letter-spacing:8px;color:var(--pL);margin-bottom:4px}
+.login-sub{font-size:10px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:28px}
+.login-card{width:100%;max-width:320px;display:flex;flex-direction:column;gap:14px}
+.lf{display:flex;flex-direction:column;gap:5px}
+.lf label{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.lf input{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:12px 16px;border-radius:10px;font-size:14px;outline:none;transition:border-color .2s}
+.lf input:focus{border-color:var(--p)}
+.btn-login{background:linear-gradient(135deg,var(--pD),var(--p));color:#fff;border:none;padding:13px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
+.btn-login:disabled{opacity:.5}
+#login-err{font-size:12px;color:var(--red);text-align:center;min-height:16px}
+
+/* ── AVATAR FULLSCREEN ── */
+#avatar-bg{position:fixed;inset:0;z-index:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#avatar-bg::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,#06091a 0%,#020510 75%);z-index:0}
+/* ── ESFERA CANVAS ── */
+#lima-sphere{
+  position:fixed;z-index:1;
+  top:0;left:0;
+  width:100vw;height:100vh;
+  pointer-events:none;
+}
+#lima-label{display:none}
+/* Canvas wave — posicionado sobre la cara */
+#wave-canvas{position:fixed;z-index:2;pointer-events:none;top:0;left:0;width:100vw;height:100vh}
+
+/* Glow de estado sobre la imagen */
+#avatar-glow{
+  position:fixed;z-index:3;pointer-events:none;
+  inset:0;
+  background:transparent;
+  transition:background .6s ease;
+}
+body.st-armado    #avatar-glow{background:radial-gradient(ellipse at 50% 30%,rgba(239,68,68,.08) 0%,transparent 70%)}
+body.st-panico    #avatar-glow{background:radial-gradient(ellipse at 50% 30%,rgba(245,158,11,.12) 0%,transparent 70%)}
+body.st-desarmado #avatar-glow{background:radial-gradient(ellipse at 50% 30%,rgba(16,185,129,.05) 0%,transparent 70%)}
+
+/* ── HEADER ── */
+#header{
+  position:fixed;top:0;left:0;right:0;z-index:20;
+  padding:calc(var(--safe-t) + 8px) 16px 8px;
+  display:flex;align-items:center;gap:10px;
+  background:linear-gradient(to bottom,rgba(13,1,24,.8) 0%,transparent 100%);
+  backdrop-filter:blur(4px);
+}
+#hdr-name{font-size:22px;font-weight:900;letter-spacing:6px;color:var(--pL);text-shadow:0 0 20px rgba(192,132,252,.5)}
+#hdr-sub{font-size:8px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+#hdr-center{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+#estado-badge{display:flex;align-items:center;gap:5px;padding:3px 12px;border-radius:20px;border:1px solid var(--border);background:rgba(13,1,24,.6);backdrop-filter:blur(8px)}
+#estado-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:all .4s}
+#estado-txt{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);transition:color .4s}
+#hdr-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+#hdr-hora{font-size:13px;color:var(--text);font-variant-numeric:tabular-nums}
+#hdr-usuario{font-size:9px;color:var(--p)}
+#btn-settings{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:4px}
+#btn-settings:active{background:var(--glassB)}
+#btn-logout{background:none;border:1px solid rgba(239,68,68,.3);color:rgba(239,68,68,.7);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:4px}
+#btn-logout:active{background:rgba(239,68,68,.15);color:var(--red)}
+
+body.st-armado    #estado-dot{background:var(--red);box-shadow:0 0 8px var(--red)}
+body.st-armado    #estado-txt{color:var(--red)}
+body.st-armado    #estado-badge{border-color:rgba(239,68,68,.4)}
+body.st-desarmado #estado-dot{background:var(--green);box-shadow:0 0 8px var(--green)}
+body.st-desarmado #estado-txt{color:var(--green)}
+body.st-desarmado #estado-badge{border-color:rgba(16,185,129,.4)}
+body.st-panico    #estado-dot{background:var(--orange);animation:blink-d .5s infinite alternate}
+body.st-panico    #estado-txt{color:var(--orange)}
+body.st-bloqueado #estado-dot{background:var(--cyan)}
+body.st-bloqueado #estado-txt{color:var(--cyan)}
+@keyframes blink-d{from{opacity:.4}to{opacity:1}}
+
+/* ── SIDE BUTTONS ── */
+.side-col{
+  position:fixed;top:50%;transform:translateY(-40%);
+  z-index:20;display:flex;flex-direction:column;gap:10px;
+}
+#side-left{left:8px}
+#side-right{right:8px;align-items:flex-end}
+
+.sbtn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  width:62px;height:62px;border-radius:16px;
+  border:1px solid var(--border);
+  background:rgba(13,1,24,.6);
+  backdrop-filter:blur(12px);
+  color:var(--muted);cursor:pointer;
+  transition:all .2s;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.sbtn:active{transform:scale(.9) !important;background:rgba(139,92,246,.2)}
+.sbtn .ico{font-size:20px;line-height:1}
+.sbtn .lbl{font-size:7px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;line-height:1.2}
+.sbtn:hover,.sbtn.active{
+  border-color:var(--p);background:rgba(139,92,246,.2);
+  color:var(--pL);box-shadow:0 0 16px rgba(139,92,246,.3)
+}
+.sbtn.panic-btn{border-color:rgba(239,68,68,.35);color:rgba(239,68,68,.8)}
+.sbtn.panic-btn:hover,.sbtn.panic-btn.active{
+  background:rgba(239,68,68,.15);border-color:var(--red);
+  color:var(--red);box-shadow:0 0 16px rgba(239,68,68,.35)
+}
+.sbtn.locked{opacity:.28;pointer-events:none}
+
+/* Estado LIMA label debajo del centro */
+#lima-state-lbl{
+  position:fixed;z-index:20;
+  bottom:calc(var(--safe-b) + 165px);
+  left:50%;transform:translateX(-50%);
+  font-size:10px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--muted);text-shadow:0 1px 8px rgba(0,0,0,.8);
+  transition:color .3s;pointer-events:none;
+  white-space:nowrap;
+}
+#lima-state-lbl.speaking{color:var(--pL)}
+#lima-state-lbl.listening{color:var(--cyan)}
+
+/* ── CHAT PANEL — fijo en fondo, transparente ── */
+#chat-panel{
+  position:fixed;left:0;right:0;bottom:0;z-index:25;
+  display:flex;flex-direction:column;
+  background:rgba(8,0,16,.28);
+  backdrop-filter:blur(6px);
+  border-top:1px solid rgba(139,92,246,.12);
+  padding-bottom:var(--safe-b);
+}
+
+#chat-topbar{
+  flex-shrink:0;display:flex;align-items:center;gap:8px;
+  padding:4px 12px 3px;border-bottom:1px solid rgba(139,92,246,.1);
+}
+#chat-topbar-lbl{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);flex:1}
+#btn-tts{font-size:9px;color:var(--muted);background:none;border:1px solid rgba(139,92,246,.2);cursor:pointer;padding:2px 7px;border-radius:6px}
+#btn-tts.on{border-color:var(--p);color:var(--pL)}
+#btn-clear{font-size:9px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 6px}
+#btn-clear:active{color:var(--red)}
+
+/* Chat: altura fija ~3 mensajes, sin expandir */
+#chat{
+  height:90px;
+  overflow-y:auto;
+  padding:5px 12px 3px;
+  display:flex;flex-direction:column;gap:4px;
+  scrollbar-width:none;
+}
+#chat::-webkit-scrollbar{display:none}
+.msg{display:flex;gap:6px;max-width:88%;animation:msgIn .2s ease-out}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.msg.lima{align-self:flex-start}
+.msg-av{width:22px;height:22px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;overflow:hidden}
+.msg.lima .msg-av{background:linear-gradient(135deg,var(--pD),var(--p))}
+.msg.lima .msg-av img{width:100%;height:100%;object-fit:cover}
+.msg.user .msg-av{background:var(--bg3);border:1px solid var(--border);color:var(--muted)}
+.msg-inner{max-width:100%;display:flex;flex-direction:column;gap:2px}
+.msg-bubble{padding:5px 10px;border-radius:10px;font-size:11px;line-height:1.4}
+.msg.user .msg-bubble{background:rgba(91,33,182,.55);color:#fff;border-bottom-right-radius:3px}
+.msg.lima .msg-bubble{background:rgba(20,5,40,.5);border:1px solid rgba(139,92,246,.15);color:var(--text);border-bottom-left-radius:3px}
+.msg.lima.intent-activar   .msg-bubble{border-color:rgba(239,68,68,.4)}
+.msg.lima.intent-desactivar .msg-bubble{border-color:rgba(16,185,129,.4)}
+.msg.lima.intent-panico    .msg-bubble{border-color:rgba(245,158,11,.5)}
+.msg-time{font-size:8px;color:var(--muted);padding:0 4px}
+.msg.user .msg-time{text-align:right}
+#typing{align-self:flex-start;display:none;gap:6px;padding:2px 0}
+#typing.show{display:flex}
+.typing-av{width:22px;height:22px;border-radius:6px;overflow:hidden;flex-shrink:0}
+.typing-av img{width:100%;height:100%;object-fit:cover}
+.typing-dots{display:flex;align-items:center;gap:4px;background:rgba(28,10,53,.9);border:1px solid var(--border);border-radius:12px;border-bottom-left-radius:3px;padding:8px 12px}
+.typing-dots span{width:5px;height:5px;border-radius:50%;background:var(--p);display:block;animation:dot .9s infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes dot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+#chat-empty{align-self:center;text-align:center;padding:16px 0;color:var(--muted);font-size:12px;letter-spacing:1px}
+
+/* ── INPUT BAR ── */
+#input-bar{
+  flex-shrink:0;display:flex;gap:8px;padding:6px 12px 8px;
+  border-top:1px solid rgba(139,92,246,.1);
+  background:transparent;
+  align-items:flex-end;
+}
+#inp{flex:1;background:rgba(20,5,40,.45);border:1px solid rgba(139,92,246,.25);color:var(--text);padding:8px 12px;border-radius:10px;font-size:13px;outline:none;resize:none;max-height:80px;overflow-y:auto;transition:border-color .2s;font-family:inherit;line-height:1.4}
+#inp:focus{border-color:var(--p)}
+#inp::placeholder{color:var(--muted)}
+.ibtn{width:40px;height:40px;border-radius:10px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;transition:all .2s;flex-shrink:0}
+#btn-send{background:linear-gradient(135deg,var(--pD),var(--p));color:#fff}
+#btn-send:disabled{opacity:.4}
+#btn-mic-in{background:rgba(20,5,40,.45);border:1px solid rgba(139,92,246,.25);color:var(--muted)}
+#btn-mic-in.recording{background:rgba(239,68,68,.15);border-color:var(--red);color:var(--red);animation:blink-d .6s infinite alternate}
+#btn-chat-toggle{background:rgba(28,10,53,.8);border:1px solid var(--border);color:var(--muted)}
+#btn-chat-toggle.open{border-color:var(--p);color:var(--pL)}
+
+/* ── PIN ── */
+#pin-overlay{position:fixed;inset:0;z-index:500;background:rgba(13,1,24,.92);backdrop-filter:blur(12px);display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+#pin-overlay.show{display:flex}
+#pin-title{font-size:13px;letter-spacing:2px;color:var(--pL);text-transform:uppercase}
+#pin-dots{display:flex;gap:12px}
+.pin-dot{width:13px;height:13px;border-radius:50%;background:var(--bg3);border:2px solid var(--border);transition:all .2s}
+.pin-dot.filled{background:var(--p);border-color:var(--p);box-shadow:0 0 8px var(--p)}
+#pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:210px}
+.pin-key{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:15px;font-size:18px;font-weight:700;cursor:pointer;text-align:center;transition:all .2s}
+.pin-key:active{background:rgba(139,92,246,.2);border-color:var(--p)}
+#pin-cancel{font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:6px 16px;letter-spacing:1px;text-transform:uppercase}
+#pin-err{font-size:12px;color:var(--red);min-height:16px;letter-spacing:1px}
+
+/* ── MOD PANEL ── */
+#mod-panel{position:fixed;inset:0;z-index:800;background:rgba(13,1,24,.96);backdrop-filter:blur(12px);display:none;flex-direction:column;padding:24px;gap:14px;overflow-y:auto}
+#mod-panel.show{display:flex}
+.mod-list{display:flex;flex-direction:column;gap:10px}
+.mod-item{display:flex;align-items:center;gap:14px;padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:12px}
+.mod-ico{font-size:22px;width:34px;text-align:center}
+.mod-info{flex:1}
+.mod-name{font-size:13px;font-weight:600;color:var(--text)}
+.mod-desc{font-size:11px;color:var(--muted);margin-top:2px}
+.mod-badge{padding:2px 9px;border-radius:10px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.mod-badge.on{background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.4);color:var(--green)}
+.mod-badge.off{background:var(--bg);border:1px solid var(--border);color:var(--muted)}
+#mod-close{background:var(--bg3);border:1px solid var(--border);color:var(--muted);border-radius:10px;padding:12px;cursor:pointer;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-top:auto}
+
+/* ── PANEL MÓDULO ── */
+#modulo-panel{
+  position:fixed;inset:0;z-index:600;
+  background:rgba(8,0,16,.92);backdrop-filter:blur(16px);
+  display:none;flex-direction:column;
+  padding:0;overflow:hidden;
+}
+#modulo-panel.show{display:flex}
+#modulo-header{
+  flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px 14px;
+  border-bottom:1px solid var(--border);
+  background:rgba(28,10,53,.6);
+}
+#modulo-titulo{font-size:16px;font-weight:700;color:var(--pL);letter-spacing:2px;text-transform:uppercase}
+#modulo-header button{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+#modulo-body{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+
+/* Tarjetas dentro del panel */
+.mod-card{background:rgba(28,10,53,.7);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.mod-card-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mod-estado-badge{padding:5px 14px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+.mod-estado-badge.armado{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:var(--red)}
+.mod-estado-badge.desarmado{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.4);color:var(--green)}
+.mod-estado-badge.desconocido{background:var(--bg3);border:1px solid var(--border);color:var(--muted)}
+.mod-estado-badge.alarma{background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.4);color:var(--orange)}
+.mod-evento-row{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(139,92,246,.08);font-size:12px}
+.mod-evento-row:last-child{border-bottom:none}
+.mod-evento-fecha{color:var(--muted);flex-shrink:0;font-size:10px;margin-top:1px}
+.mod-evento-desc{color:var(--text);flex:1;line-height:1.4}
+.mod-label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+.mod-value{font-size:15px;font-weight:700;color:var(--text)}
+.mod-value.online{color:var(--green)}
+.mod-value.offline{color:var(--muted)}
+.mod-btn{background:linear-gradient(135deg,var(--pD),var(--p));color:#fff;border:none;border-radius:10px;padding:12px;cursor:pointer;font-size:13px;font-weight:700;letter-spacing:1px;width:100%}
+.mod-btn:active{opacity:.8}
+.mod-btn.danger{background:linear-gradient(135deg,#991b1b,var(--red))}
+.mod-btn.secondary{background:rgba(139,92,246,.2);border:1px solid var(--border);color:var(--pL)}
+.mod-spinner{text-align:center;padding:40px;color:var(--muted);font-size:13px;letter-spacing:1px}
+.mod-error{text-align:center;padding:30px;color:var(--red);font-size:13px}
+.ha-device{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(139,92,246,.08)}
+.ha-device:last-child{border-bottom:none}
+.ha-device-name{flex:1;font-size:13px;color:var(--text)}
+.ha-device-domain{font-size:10px;color:var(--muted);margin-top:2px}
+.ha-toggle{width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.ha-toggle.on{background:var(--p)}
+.ha-toggle.off{background:rgba(139,92,246,.2);border:1px solid var(--border)}
+.ha-toggle::after{content:'';position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s}
+.ha-toggle.on::after{left:23px}
+.ha-toggle.off::after{left:3px}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:calc(var(--safe-b) + 70px);left:50%;transform:translateX(-50%);background:rgba(28,10,53,.95);border:1px solid var(--border);border-radius:10px;padding:9px 16px;font-size:13px;z-index:900;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center;backdrop-filter:blur(10px)}
+#toast.show{opacity:1}
+#toast.t-ok{border-color:rgba(16,185,129,.4);color:var(--green)}
+#toast.t-err{border-color:rgba(239,68,68,.4);color:var(--red)}
+
+/* PANEL PANICO */
+#panic-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
+.panic-opt{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;padding:20px 10px;border-radius:16px;
+  border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.06);
+  cursor:pointer;transition:all .18s;user-select:none;
+}
+.panic-opt:active{transform:scale(.92)}
+.panic-opt svg{width:38px;height:38px;flex-shrink:0}
+.panic-opt span{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--muted);font-weight:700;text-align:center;line-height:1.4}
+.panic-opt.p-sonoro    {border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08)}
+.panic-opt.p-silencioso{border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.08)}
+.panic-opt.p-fuego     {border-color:rgba(249,115,22,.4);background:rgba(249,115,22,.08)}
+.panic-opt.p-ayuda     {border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.08)}
+.panic-opt.p-sonoro:active    {background:rgba(239,68,68,.2)}
+.panic-opt.p-silencioso:active{background:rgba(245,158,11,.2)}
+.panic-opt.p-fuego:active     {background:rgba(249,115,22,.2)}
+.panic-opt.p-ayuda:active     {background:rgba(99,102,241,.2)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="login-avatar"><img src="/img/lima_frente.png" alt="LIMA"/></div>
+  <div class="login-title">LIMA</div>
+  <div class="login-sub">Asistente IA · LIMEN Seguridad</div>
+  <div class="login-card">
+    <div class="lf"><label>Email</label><input type="email" id="l-email" placeholder="tu@email.com" autocomplete="email"/></div>
+    <div class="lf"><label>Contraseña</label><input type="password" id="l-pass" placeholder="••••••••"/></div>
+    <button class="btn-login" id="btn-login" onclick="hacerLogin()">INGRESAR</button>
+    <div id="login-err"></div>
+  </div>
+</div>
+
+<!-- AVATAR FULLSCREEN -->
+<div id="avatar-bg"></div>
+<canvas id="lima-sphere"></canvas>
+<canvas id="wave-canvas"></canvas>
+<div id="avatar-glow"></div>
+
+<!-- HEADER -->
+<div id="header">
+  <div><div id="hdr-name">LIMA</div><div id="hdr-sub">LIMEN Seguridad</div></div>
+  <div id="hdr-center">
+    <div id="estado-badge"><div id="estado-dot"></div><div id="estado-txt">—</div></div>
+  </div>
+  <div id="hdr-right">
+    <div id="hdr-hora">--:--</div>
+    <div id="hdr-usuario"></div>
+    <div style="display:flex;gap:6px">
+      <button id="btn-settings" onclick="mostrarModulos()">⚙</button>
+      <button id="btn-logout" onclick="logout()" title="Salir">⏻</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIDE LEFT: Mi Alarma, Mi Hogar, Historial -->
+<div class="side-col" id="side-left">
+  <button class="sbtn" id="sbtn-alarma" onclick="accionBtn('alarma')">
+    <span class="ico">🔔</span><span class="lbl">Mi Alarma</span>
+  </button>
+  <button class="sbtn" id="sbtn-hogar" onclick="accionBtn('hogar')">
+    <span class="ico">🏠</span><span class="lbl">Mi Hogar</span>
+  </button>
+  <button class="sbtn" id="sbtn-historial" onclick="abrirHistorial()">
+    <span class="ico">📋</span><span class="lbl">Historial</span>
+  </button>
+</div>
+
+<!-- SIDE RIGHT: Mi GPS, Mi Edificio, Pánico -->
+<div class="side-col" id="side-right">
+  <button class="sbtn" id="sbtn-gps" onclick="accionBtn('gps')">
+    <span class="ico">📍</span><span class="lbl">Mi GPS</span>
+  </button>
+  <button class="sbtn" id="sbtn-edificio" onclick="accionBtn('edificio')">
+    <span class="ico">🏢</span><span class="lbl">Mi Edificio</span>
+  </button>
+  <button class="sbtn panic-btn" id="sbtn-panico" onclick="accionPanico()">
+    <span class="ico">🚨</span><span class="lbl">Pánico</span>
+  </button>
+</div>
+
+<!-- ESTADO LABEL -->
+<div id="lima-state-lbl">En espera</div>
+
+<!-- CHAT PANEL (fijo abajo) -->
+<div id="chat-panel">
+  <div id="chat-topbar">
+    <span style="font-size:12px">💬</span>
+    <span id="chat-topbar-lbl">Conversación</span>
+    <button id="btn-tts" onclick="toggleTTS()" title="Voz">🔊 VOZ</button>
+    <button id="btn-clear" onclick="limpiarChat()">✕</button>
+  </div>
+  <div id="chat">
+    <div id="chat-empty"><p style="font-size:20px;margin-bottom:6px">✦</p><p>Hablá o escribí para comenzar</p></div>
+    <div id="typing">
+      <div class="typing-av" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:11px">L</div>
+      <div class="typing-dots"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+  <div id="input-bar">
+    <button class="ibtn" id="btn-mic-in" onpointerdown="btnMicPointerDown()" onpointerup="btnMicPointerUp()" onpointerleave="btnMicPointerUp()" style="font-size:10px;padding:0 6px;min-width:72px;color:var(--pL);border-color:rgba(139,92,246,.5)">🎙 Voz ON</button>
+    <textarea id="inp" rows="1" placeholder="Hablá con LIMA..."></textarea>
+    <button class="ibtn" id="btn-send" onclick="enviar()">➤</button>
+  </div>
+</div>
+
+<!-- PIN -->
+<div id="pin-overlay">
+  <div id="pin-title">PIN de seguridad</div>
+  <div id="pin-dots"><div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div><div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div></div>
+  <div id="pin-err"></div>
+  <div id="pin-pad">
+    <button class="pin-key" onclick="pinKey('1')">1</button><button class="pin-key" onclick="pinKey('2')">2</button><button class="pin-key" onclick="pinKey('3')">3</button>
+    <button class="pin-key" onclick="pinKey('4')">4</button><button class="pin-key" onclick="pinKey('5')">5</button><button class="pin-key" onclick="pinKey('6')">6</button>
+    <button class="pin-key" onclick="pinKey('7')">7</button><button class="pin-key" onclick="pinKey('8')">8</button><button class="pin-key" onclick="pinKey('9')">9</button>
+    <button class="pin-key" onclick="pinKey('del')">⌫</button><button class="pin-key" onclick="pinKey('0')">0</button><button class="pin-key" onclick="pinKey('ok')" style="color:var(--green)">✓</button>
+  </div>
+  <button id="pin-cancel" onclick="cerrarPin()">Cancelar</button>
+</div>
+
+<!-- MÓDULOS -->
+<div id="mod-panel">
+  <div style="font-size:11px;letter-spacing:3px;color:var(--muted);text-transform:uppercase">Módulos habilitados</div>
+  <div style="font-size:17px;font-weight:700;color:var(--pL)" id="mod-cliente">—</div>
+  <div class="mod-list" id="mod-list"></div>
+  <button class="mod-btn secondary" onclick="mostrarCambiarPassword()" style="margin-top:4px">🔑 Cambiar contraseña</button>
+  <button id="mod-close" onclick="document.getElementById('mod-panel').classList.remove('show')">Cerrar</button>
+</div>
+
+<!-- ── PANEL MÓDULOS LATERALES ── -->
+<div id="modulo-panel">
+  <div id="modulo-header">
+    <span id="modulo-titulo"></span>
+    <button onclick="cerrarModulo()">✕</button>
+  </div>
+  <div id="modulo-body"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════════════
+const API = '/comando'
+const TK  = 'lima_token'
+const UK  = 'lima_user'
+const MK  = 'lima_mods'
+
+const IMGS = {}  // imágenes reemplazadas por esfera de partículas
+
+const ALL_MODS = [
+  {id:'alarma',  ico:'🔔', name:'Alarma',    desc:'Control de armado y zonas'},
+  {id:'gps',     ico:'📍', name:'GPS',       desc:'Seguimiento de vehículos'},
+  {id:'casa',    ico:'🏠', name:'Hogar',     desc:'Control del hogar'},
+  {id:'camara',  ico:'📷', name:'Cámara',    desc:'Monitoreo de cámaras'},
+  {id:'notif',   ico:'🔔', name:'Alertas',   desc:'Notificaciones y eventos'},
+  {id:'edificio',ico:'🏢', name:'Edificio',  desc:'Acceso y control de edificio'},
+]
+
+// Comandos por botón
+const BTN_CMDS = {
+  alarma:   '¿Cuál es el estado de mi alarma?',
+  hogar:    '¿Cuál es el estado de mi hogar?',
+  gps:      '¿Dónde está mi vehículo?',
+  edificio: '¿Cuál es el estado de mi edificio?',
+}
+
+const getToken   = () => localStorage.getItem(TK)
+const getUsuario = () => { try { return JSON.parse(localStorage.getItem(UK)||'null') } catch { return null } }
+const getMods    = () => { try { return JSON.parse(localStorage.getItem(MK)||'[]') } catch { return [] } }
+
+// ════════════════════════════════════════════════════
+//  AVATAR — Esfera de partículas
+// ════════════════════════════════════════════════════
+const sCanvas  = document.getElementById('lima-sphere')
+const sCtx     = sCanvas.getContext('2d')
+const limaLbl  = document.getElementById('lima-label')
+let avatarState = 'idle'
+let blinkTimer  = null
+let glanceTimer = null
+let blinkLocked = false
+
+// Estado de la onda de voz
+const voiceWave = {
+  amp:    0,      // amplitud actual (lerp)
+  target: 0,      // amplitud objetivo
+  freq:   3.5,    // frecuencia base
+}
+
+// Estado de la esfera
+const sphere = {
+  // Color target por estado
+  colors: {
+    idle:       { r:160, g:32,  b:255 },  // violeta eléctrico Limen
+    listening:  { r:80,  g:140, b:255 },  // azul eléctrico
+    speaking:   { r:200, g:60,  b:255 },  // magenta/violeta
+    processing: { r:0,   g:180, b:255 },  // cian brillante
+    correcto:   { r:0,   g:230, b:120 },  // verde neón
+    error:      { r:255, g:50,  b:80  },  // rojo neón
+  },
+  cur:    { r:160, g:32, b:255 },
+  target: { r:160, g:32, b:255 },
+  radius: 0,
+  targetRadius: 0,
+  pulse: 0,
+  pulseSpeed: 0.018,
+  rotation: 0,
+  energy: 0,
+  targetEnergy: 0,
+}
+
+const IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+
+// ── Matrix rain ──
+const MAT_CHARS = '01アイウエオカキクΑΒΓΔΩ∑∆∇∞⌬◈△⊕ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ'
+const matrixCols = []
+function initMatrix() {
+  matrixCols.length = 0
+  const nCols = IS_MOBILE ? 7 : 14
+  for (let i = 0; i < nCols; i++) {
+    matrixCols.push({
+      xOff:  -1.0 + (i / (nCols - 1)) * 2.0,
+      y:     Math.random(),
+      speed: 0.003 + Math.random() * 0.005,
+      chars: Array.from({length: 6}, () => MAT_CHARS[Math.floor(Math.random() * MAT_CHARS.length)]),
+      flipT: Math.floor(Math.random() * 12),
+    })
+  }
+}
+initMatrix()
+
+// ── Arcos de energía ──
+const energyArcs = []
+function spawnArc(baseR, r, g, b) {
+  if (energyArcs.length >= (IS_MOBILE ? 3 : 6)) return
+  energyArcs.push({
+    angle:   Math.random() * Math.PI * 2,
+    prog:    0,
+    speed:   0.025 + Math.random() * 0.035,
+    maxR:    baseR * (0.5 + Math.random() * 0.7),
+    alpha:   0.5 + Math.random() * 0.5,
+  })
+}
+
+// Resize
+function initSphereCanvas() {
+  const dpr = window.devicePixelRatio || 1
+  sCanvas.width  = window.innerWidth  * dpr
+  sCanvas.height = window.innerHeight * dpr
+  sCtx.setTransform(1,0,0,1,0,0)
+  sCtx.scale(dpr, dpr)
+  sphere.radius       = Math.min(window.innerWidth, window.innerHeight) * 0.30
+  sphere.targetRadius = sphere.radius
+}
+window.addEventListener('resize', initSphereCanvas)
+
+function lerpColor(cur, target, t) {
+  cur.r += (target.r - cur.r) * t
+  cur.g += (target.g - cur.g) * t
+  cur.b += (target.b - cur.b) * t
+}
+
+function drawSphere(ts) {
+  const W  = window.innerWidth
+  const H  = window.innerHeight
+  const cx = W * 0.5
+  const cy = H * 0.43
+
+  sCtx.clearRect(0, 0, W, H)
+
+  // Lerp color
+  lerpColor(sphere.cur, sphere.target, 0.04)
+  const { r, g, b } = sphere.cur
+  const col = `rgb(${r|0},${g|0},${b|0})`
+
+  // Lerp energy
+  sphere.energy += (sphere.targetEnergy - sphere.energy) * 0.05
+
+  // Pulse
+  sphere.pulse += sphere.pulseSpeed
+  const pulseMult = 1 + Math.sin(sphere.pulse) * (0.04 + sphere.energy * 0.12)
+  sphere.rotation += 0.003 + sphere.energy * 0.008
+
+  const baseR = sphere.radius * pulseMult
+
+  // ── Halo suave alrededor de la esfera ──
+  const glowR  = baseR * (2.5 + sphere.energy * 1.0)
+  const glowOuter = sCtx.createRadialGradient(cx, cy, 0, cx, cy, glowR)
+  glowOuter.addColorStop(0,   `rgba(255,255,255,${0.12 + sphere.energy * 0.10})`)
+  glowOuter.addColorStop(0.5, `rgba(255,255,255,${0.04 + sphere.energy * 0.04})`)
+  glowOuter.addColorStop(1,    'rgba(255,255,255,0)')
+  sCtx.beginPath()
+  sCtx.arc(cx, cy, glowR, 0, Math.PI * 2)
+  sCtx.fillStyle = glowOuter
+  sCtx.fill()
+
+  // Esfera blanca central
+  const coreR = 39.0 + sphere.energy * 58.5
+  const coreG = sCtx.createRadialGradient(cx - coreR*0.28, cy - coreR*0.28, coreR*0.05, cx, cy, coreR)
+  coreG.addColorStop(0,   'rgba(255,255,255,1)')
+  coreG.addColorStop(0.5, 'rgba(230,230,255,0.95)')
+  coreG.addColorStop(0.85,'rgba(200,200,240,0.85)')
+  coreG.addColorStop(1,   'rgba(160,160,220,0.7)')
+  sCtx.beginPath()
+  sCtx.arc(cx, cy, coreR, 0, Math.PI * 2)
+  sCtx.fillStyle = coreG
+  sCtx.fill()
+  // Borde suave
+  sCtx.beginPath()
+  sCtx.arc(cx, cy, coreR, 0, Math.PI * 2)
+  sCtx.strokeStyle = 'rgba(255,255,255,0.4)'
+  sCtx.lineWidth = 1.5
+  sCtx.stroke()
+
+  // ── Anillos orbitales neon ──
+  sCtx.save()
+  sCtx.beginPath()
+  sCtx.ellipse(cx, cy, baseR * 1.08, baseR * 0.18, sphere.rotation * 0.3, 0, Math.PI * 2)
+  sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.7 + sphere.energy * 0.3})`
+  sCtx.lineWidth   = 1.5
+  sCtx.stroke()
+
+  sCtx.save()
+  sCtx.translate(cx, cy)
+  sCtx.rotate(sphere.rotation * 0.5 + Math.PI * 0.25)
+  sCtx.beginPath()
+  sCtx.ellipse(0, 0, baseR * 1.12, baseR * 0.2, Math.PI * 0.35, 0, Math.PI * 2)
+  sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.55 + sphere.energy * 0.3})`
+  sCtx.lineWidth   = 1.2
+  sCtx.stroke()
+  sCtx.restore()
+
+  sCtx.restore()
+
+
+
+  // ── Pulsos expansivos al hablar ──
+  if (sphere.energy > 0.2) {
+    for (let p = 0; p < 2; p++) {
+      const pR = baseR * (1.3 + ((ts * 0.001 + p * 0.75) % 1.8))
+      const pA = Math.max(0, 0.5 - pR / (baseR * 3.5)) * sphere.energy
+      sCtx.beginPath()
+      sCtx.arc(cx, cy, pR, 0, Math.PI * 2)
+      sCtx.strokeStyle = p === 0
+        ? `rgba(${r|0},${g|0},${b|0},${pA})`
+        : `rgba(255,255,255,${pA * 0.4})`
+      sCtx.lineWidth = p === 0 ? 1.5 : 0.8
+      sCtx.stroke()
+    }
+  }
+
+  // ── Línea de voz: recta en reposo, onda al hablar ──
+  {
+    voiceWave.amp += (voiceWave.target - voiceWave.amp) * 0.09
+    const wW   = baseR * 1.7
+    const wSegs = IS_MOBILE ? 40 : 90
+
+    sCtx.save()
+    sCtx.translate(cx, cy)
+    sCtx.shadowColor = `rgba(${r|0},${g|0},${b|0},0.8)`
+    sCtx.shadowBlur  = voiceWave.amp > 2 ? 10 : 4
+
+    const wGrad = sCtx.createLinearGradient(-wW/2, 0, wW/2, 0)
+    wGrad.addColorStop(0,   `rgba(${r|0},${g|0},${b|0},0)`)
+    wGrad.addColorStop(0.15,`rgba(${r|0},${g|0},${b|0},0.7)`)
+    wGrad.addColorStop(0.5, `rgba(255,255,255,${0.4 + voiceWave.amp/40})`)
+    wGrad.addColorStop(0.85,`rgba(${r|0},${g|0},${b|0},0.7)`)
+    wGrad.addColorStop(1,   `rgba(${r|0},${g|0},${b|0},0)`)
+
+    // Onda principal
+    sCtx.beginPath()
+    for (let i = 0; i <= wSegs; i++) {
+      const t2  = i / wSegs
+      const x   = -wW/2 + t2 * wW
+      const env = Math.sin(t2 * Math.PI)
+      const spd = ts * 0.005
+      const y   = voiceWave.amp > 0.5
+        ? (Math.sin(t2 * Math.PI * 2 * voiceWave.freq          - spd) * voiceWave.amp
+         + Math.sin(t2 * Math.PI * 2 * voiceWave.freq * 1.618  - spd * 1.4) * voiceWave.amp * 0.4
+         + Math.sin(t2 * Math.PI * 2 * voiceWave.freq * 0.5    - spd * 0.7) * voiceWave.amp * 0.2
+          ) * env
+        : 0
+      i === 0 ? sCtx.moveTo(x, y) : sCtx.lineTo(x, y)
+    }
+    sCtx.strokeStyle = wGrad
+    sCtx.lineWidth   = 2
+    sCtx.stroke()
+
+    // Línea base siempre visible (recta)
+    sCtx.beginPath()
+    sCtx.moveTo(-wW/2, 0)
+    sCtx.lineTo( wW/2, 0)
+    const baseGrad = sCtx.createLinearGradient(-wW/2, 0, wW/2, 0)
+    baseGrad.addColorStop(0,   `rgba(${r|0},${g|0},${b|0},0)`)
+    baseGrad.addColorStop(0.5, `rgba(${r|0},${g|0},${b|0},${0.35 - voiceWave.amp/120})`)
+    baseGrad.addColorStop(1,   `rgba(${r|0},${g|0},${b|0},0)`)
+    sCtx.strokeStyle = baseGrad
+    sCtx.lineWidth   = 1
+    sCtx.stroke()
+
+    sCtx.restore()
+  }
+
+    // ── Patrón geométrico de circuito sobre la esfera ──
+  const nNodes = IS_MOBILE ? 5 : 8
+  const nodeA  = sphere.rotation * 0.7
+  sCtx.save()
+  sCtx.translate(cx, cy)
+
+  // Anillos hexagonales inclinados
+  for (let ri = 0; ri < 3; ri++) {
+    const ringR = baseR * (0.65 + ri * 0.18)
+    const tilt  = (ri * Math.PI / 3) + sphere.rotation * (0.3 + ri * 0.1)
+    const sides = 6 + ri * 2
+    const alpha = (0.55 + sphere.energy * 0.40) * (1 - ri * 0.20)
+    sCtx.beginPath()
+    for (let s = 0; s <= sides; s++) {
+      const a = (s / sides) * Math.PI * 2 + tilt
+      const x = Math.cos(a) * ringR
+      const y = Math.sin(a) * ringR * 0.35
+      s === 0 ? sCtx.moveTo(x, y) : sCtx.lineTo(x, y)
+    }
+    sCtx.strokeStyle = `rgba(0,220,255,${alpha})`
+    sCtx.lineWidth = 1.5
+    sCtx.stroke()
+  }
+
+  // Nodos de circuito en la superficie
+  for (let i = 0; i < nNodes; i++) {
+    const a   = (i / nNodes) * Math.PI * 2 + nodeA
+    const nx  = Math.cos(a) * baseR * 0.88
+    const ny  = Math.sin(a) * baseR * 0.30
+    const sz  = 1.5 + sphere.energy * 1.5
+    const osc = 0.4 + 0.6 * Math.abs(Math.sin(a * 2 + ts * 0.002))
+    // Línea de nodo al siguiente
+    const a2 = ((i + 1) / nNodes) * Math.PI * 2 + nodeA
+    const nx2 = Math.cos(a2) * baseR * 0.88
+    const ny2 = Math.sin(a2) * baseR * 0.30
+    sCtx.beginPath()
+    sCtx.moveTo(nx, ny)
+    sCtx.lineTo(nx2, ny2)
+    sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.55 + sphere.energy * 0.35})`
+    sCtx.lineWidth = 1.2
+    sCtx.stroke()
+    // Punto nodo
+    sCtx.beginPath()
+    sCtx.arc(nx, ny, sz * osc, 0, Math.PI * 2)
+    sCtx.fillStyle = `rgba(255,255,255,${0.85 * osc + sphere.energy * 0.15})`
+    sCtx.fill()
+  }
+
+  // Cruz de ejes del circuito
+  const axLen = baseR * 1.05
+  for (let ax = 0; ax < 4; ax++) {
+    const a   = ax * Math.PI / 2 + sphere.rotation * 0.4
+    const xE  = Math.cos(a) * axLen
+    const yE  = Math.sin(a) * axLen * 0.35
+    sCtx.beginPath()
+    sCtx.moveTo(0, 0)
+    sCtx.lineTo(xE, yE)
+    sCtx.shadowColor = `rgba(${r|0},${g|0},${b|0},0.8)`
+    sCtx.shadowBlur  = 6
+    sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.35 + sphere.energy * 0.30})`
+    sCtx.lineWidth = 1.0
+    sCtx.stroke()
+    // Rombo en punta
+    const dSz = 3 + sphere.energy * 3
+    sCtx.save()
+    sCtx.translate(xE, yE)
+    sCtx.rotate(a + Math.PI / 4)
+    sCtx.shadowColor = 'rgba(255,255,255,1)'
+    sCtx.shadowBlur  = 12
+    sCtx.strokeStyle = `rgba(255,255,255,${0.75 + sphere.energy * 0.25})`
+    sCtx.lineWidth = 1.2
+    sCtx.strokeRect(-dSz/2, -dSz/2, dSz, dSz)
+    sCtx.restore()
+  }
+
+  sCtx.restore()
+
+  // ── Anillos orbitales extra ──
+  const nRings = IS_MOBILE ? 2 : 3
+  for (let ri = 0; ri < nRings; ri++) {
+    const rot = sphere.rotation * (0.6 + ri * 0.35) + ri * Math.PI * 0.4
+    sCtx.save()
+    sCtx.translate(cx, cy)
+    sCtx.rotate(rot)
+    sCtx.beginPath()
+    sCtx.ellipse(0, 0, baseR * (1.35 + ri * 0.22), baseR * (0.13 + ri * 0.04), ri * Math.PI / 5, 0, Math.PI * 2)
+    sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.45 + sphere.energy * 0.35})`
+    sCtx.lineWidth = 1
+    sCtx.stroke()
+    sCtx.restore()
+  }
+
+  // ── Arcos de energía ──
+  if (Math.random() < 0.04 + sphere.energy * 0.08) spawnArc(baseR, r, g, b)
+  for (let i = energyArcs.length - 1; i >= 0; i--) {
+    const arc = energyArcs[i]
+    arc.prog += arc.speed
+    if (arc.prog > 1.4) { energyArcs.splice(i, 1); continue }
+    const tail = Math.max(0, arc.prog - 0.35)
+    const x1 = cx + Math.cos(arc.angle) * arc.maxR * tail
+    const y1 = cy + Math.sin(arc.angle) * arc.maxR * tail * 0.4
+    const x2 = cx + Math.cos(arc.angle) * arc.maxR * Math.min(arc.prog, 1)
+    const y2 = cy + Math.sin(arc.angle) * arc.maxR * Math.min(arc.prog, 1) * 0.4
+    const a  = Math.max(0, (1 - arc.prog) * arc.alpha)
+    sCtx.beginPath()
+    sCtx.moveTo(x1, y1)
+    sCtx.lineTo(x2, y2)
+    sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${a})`
+    sCtx.lineWidth = 1.5
+    sCtx.stroke()
+  }
+
+  // ── Matrix rain ──
+  const colH = baseR * 1.6
+  sCtx.textAlign    = 'center'
+  sCtx.textBaseline = 'middle'
+  sCtx.font         = '10px monospace'
+  matrixCols.forEach(col => {
+    col.flipT++
+    if (col.flipT >= 10) {
+      col.flipT = 0
+      const idx = Math.floor(Math.random() * col.chars.length)
+      col.chars[idx] = MAT_CHARS[Math.floor(Math.random() * MAT_CHARS.length)]
+    }
+    col.y += col.speed * (1 + sphere.energy * 0.5)
+    if (col.y > 1.25) {
+      col.y = -0.15
+      col.chars = col.chars.map(() => MAT_CHARS[Math.floor(Math.random() * MAT_CHARS.length)])
+    }
+    const xPos = cx + col.xOff * baseR * 1.85
+    for (let i = 0; i < col.chars.length; i++) {
+      const yPos = cy - colH / 2 + (col.y + i * 0.18) * colH
+      if (yPos < cy - colH * 0.65 || yPos > cy + colH * 0.65) continue
+      const a = i === 0
+        ? 0.95
+        : Math.max(0, 0.55 - i * 0.10)
+      sCtx.globalAlpha = a * (0.7 + sphere.energy * 0.3)
+      sCtx.fillStyle   = i === 0 ? 'rgba(255,255,255,1)' : `rgba(0,210,255,1)`
+      sCtx.fillText(col.chars[i], xPos, yPos)
+    }
+    sCtx.globalAlpha = 1
+  })
+}
+
+let sRafId = null
+function sphereLoop(ts) {
+  sRafId = requestAnimationFrame(sphereLoop)
+  drawSphere(ts)
+}
+
+function setSphereState(state) {
+  const c = sphere.colors[state] || sphere.colors.idle
+  sphere.target = { ...c }
+  switch(state) {
+    case 'idle':
+      sphere.targetEnergy  = 0.30
+      sphere.pulseSpeed    = 0.020
+      voiceWave.target = 0
+      break
+    case 'listening':
+      sphere.targetEnergy  = 0.45
+      sphere.pulseSpeed    = 0.035
+      voiceWave.target = 0
+      break
+    case 'speaking':
+      sphere.targetEnergy  = 0.85
+      sphere.pulseSpeed    = 0.055
+      voiceWave.target = 22
+      break
+    case 'processing':
+      sphere.targetEnergy  = 0.5
+      sphere.pulseSpeed    = 0.04
+      voiceWave.target = 0
+      break
+    case 'correcto':
+      sphere.targetEnergy  = 0.7
+      sphere.pulseSpeed    = 0.05
+      break
+    case 'error':
+      sphere.targetEnergy  = 0.6
+      sphere.pulseSpeed    = 0.06
+      break
+  }
+}
+
+// Compatibilidad: setImg no hace nada (no hay imágenes)
+function setImg(key) {}
+function setAnim(cls) {}
+
+function setAvatarState(state) {
+  avatarState = state
+  const lbl   = document.getElementById('lima-state-lbl')
+  clearTimeout(blinkTimer)
+  clearTimeout(glanceTimer)
+  blinkLocked = false
+  setSphereState(state)
+
+  const labels = {
+    idle:       'En espera',
+    listening:  'Escuchando...',
+    speaking:   'Respondiendo...',
+    processing: 'Procesando...',
+    correcto:   'Código correcto',
+    error:      'Error',
+  }
+  if (limaLbl) limaLbl.textContent = labels[state] || ''
+  if (lbl) {
+    lbl.textContent = labels[state] || ''
+    lbl.className   = (state==='speaking'||state==='processing'||state==='error') ? 'speaking' : (state==='listening' ? 'listening' : '')
+  }
+
+  switch(state) {
+    case 'idle':
+      setWaveState('idle')
+      scheduleBlink()
+      scheduleGlance()
+      break
+    case 'listening':
+      setWaveState('listening')
+      break
+    case 'speaking':
+      setWaveState('speaking')
+      break
+    case 'processing':
+      setWaveState('listening')
+      break
+    case 'correcto':
+    case 'error':
+      setTimeout(() => setAvatarState('idle'), 3000)
+      break
+  }
+}
+
+// Blink y glance son no-ops visuales pero mantenemos los timers para compatibilidad
+function triggerBlink() {
+  if (blinkLocked) return
+  blinkLocked = true
+  setTimeout(() => { blinkLocked = false }, 300)
+}
+
+function scheduleBlink() {
+  clearTimeout(blinkTimer)
+  blinkTimer = setTimeout(() => {
+    if (avatarState === 'idle') triggerBlink()
+    scheduleBlink()
+  }, 3000 + Math.random() * 5000)
+}
+
+function scheduleGlance() {
+  clearTimeout(glanceTimer)
+  glanceTimer = setTimeout(() => {
+    scheduleGlance()
+  }, 5000 + Math.random() * 6000)
+}
+
+
+// ════════════════════════════════════════════════════
+//  WAVE CANVAS — Anillos Matrix
+// ════════════════════════════════════════════════════
+const wCanvas = document.getElementById('wave-canvas')
+const wCtx    = wCanvas.getContext('2d')
+let wState    = 'idle'
+let wAmpS     = 0
+let wAngle    = 0
+let wRafId    = null
+
+const MC = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン' +
+           'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' +
+           '!@#$%&*<>{}[]|/\\~\u00b1\u00a7\u00a5\u20ac\u03a9\u0394\u03a3\u221e\u221a\u03c0\u2260\u2248\u2591\u2592\u2593\u2588'
+
+const MRINGS = [
+  { rOff:55,  n:38,  spd:.0018, dir: 1,  sz:11, baseA:.55 },
+  { rOff:105, n:58,  spd:.0011, dir:-1,  sz:12, baseA:.40 },
+  { rOff:160, n:76,  spd:.0007, dir: 1,  sz:13, baseA:.28 },
+]
+const ringChars  = MRINGS.map(r => Array.from({length:r.n}, ()=> MC[Math.floor(Math.random()*MC.length)]))
+const ringAngles = [0, Math.PI*.4, Math.PI*.8]
+
+setInterval(() => {
+  ringChars.forEach((chars) => {
+    const n = Math.ceil(chars.length * .04)
+    for (let i = 0; i < n; i++) {
+      chars[Math.floor(Math.random()*chars.length)] = MC[Math.floor(Math.random()*MC.length)]
+    }
+  })
+}, 300)
+
+function initWaveCanvas() {
+  const dpr = window.devicePixelRatio || 1
+  wCanvas.width  = window.innerWidth  * dpr
+  wCanvas.height = window.innerHeight * dpr
+  wCtx.setTransform(1,0,0,1,0,0)
+  wCtx.scale(dpr, dpr)
+}
+
+function setWaveState(s) { wState = s; if(!wRafId) wRafId = requestAnimationFrame(drawWave) }
+
+function simAmp() {
+  if (wState === 'idle')      return 0.05 + 0.03  * Math.sin(Date.now() * .001)
+  if (wState === 'listening') return 0.28 + 0.18  * Math.sin(Date.now() * .008)
+  if (wState === 'speaking') {
+    const t = Date.now() * .003
+    return 0.42 + 0.40 * Math.abs(Math.sin(t) * Math.sin(t*2.3) * Math.sin(t*.7))
+  }
+  return 0
+}
+
+function drawWave(ts) {
+  wRafId = requestAnimationFrame(drawWave)
+  const W = window.innerWidth, H = window.innerHeight
+  wCtx.clearRect(0, 0, W, H)
+
+  const cx    = W * .5
+  const cy    = H * .43
+  const baseR = Math.min(W * .18, H * .15)
+
+  const target = simAmp()
+  wAmpS += (target - wAmpS) * .06
+  wAngle += wState === 'speaking' ? .006 : .0018
+
+  // Glow de fondo
+  const gRad = baseR + 180 + wAmpS * 80
+  const glow = wCtx.createRadialGradient(cx, cy, baseR*.5, cx, cy, gRad)
+  glow.addColorStop(0, 'rgba(0,180,255,' + (.08 + wAmpS*.12) + ')')
+  glow.addColorStop(.5,'rgba(0,60,140,' + (.04 + wAmpS*.05) + ')')
+  glow.addColorStop(1, 'rgba(0,180,255,0)')
+  wCtx.beginPath(); wCtx.arc(cx,cy,gRad,0,Math.PI*2)
+  wCtx.fillStyle = glow; wCtx.fill()
+
+  // Ring central — dashes
+  const r1   = baseR + 16 + wAmpS * 26
+  const nD   = 36
+  const dAlpha = wState === 'idle' ? .45 : .75
+  for (let i = 0; i < nD; i++) {
+    const a   = (i/nD)*Math.PI*2 + wAngle
+    const len = wState === 'speaking'
+      ? 10 + wAmpS * 32 * Math.abs(Math.sin(i*.7 + ts*.0012))
+      : 6  + wAmpS * 12
+    wCtx.beginPath()
+    wCtx.moveTo(cx + Math.cos(a)*r1,       cy + Math.sin(a)*r1)
+    wCtx.lineTo(cx + Math.cos(a)*(r1+len), cy + Math.sin(a)*(r1+len))
+    const grd = wCtx.createLinearGradient(
+      cx + Math.cos(a)*r1, cy + Math.sin(a)*r1,
+      cx + Math.cos(a)*(r1+len), cy + Math.sin(a)*(r1+len)
+    )
+    grd.addColorStop(0, 'rgba(0,180,255,' + (dAlpha*.5) + ')')
+    grd.addColorStop(1, 'rgba(100,220,255,' + dAlpha + ')')
+    wCtx.strokeStyle = grd
+    wCtx.lineWidth   = 2.5
+    wCtx.stroke()
+  }
+
+  // Anillos de caracteres Matrix
+  MRINGS.forEach((ring, ri) => {
+    ringAngles[ri] += ring.spd * ring.dir * (1 + wAmpS * 2)
+    const chars = ringChars[ri]
+    const r = baseR + ring.rOff + wAmpS * 30
+    wCtx.font = ring.sz + 'px monospace'
+    for (let i = 0; i < ring.n; i++) {
+      const a   = (i / ring.n) * Math.PI * 2 + ringAngles[ri]
+      const x   = cx + Math.cos(a) * r
+      const y   = cy + Math.sin(a) * r
+      const osc = 0.5 + 0.5 * Math.sin(a * 3 + Date.now() * .0008)
+      const alpha = ring.baseA * osc * (wState === 'idle' ? .6 : 1)
+      wCtx.fillStyle   = 'rgba(0,200,255,' + alpha + ')'
+      wCtx.textAlign   = 'center'
+      wCtx.textBaseline= 'middle'
+      wCtx.save()
+      wCtx.translate(x, y)
+      wCtx.rotate(a + Math.PI/2)
+      wCtx.fillText(chars[i], 0, 0)
+      wCtx.restore()
+    }
+  })
+}
+
+// ════════════════════════════════════════════════════
+//  ESTADO SISTEMA
+// ════════════════════════════════════════════════════
+function setEstado(estado, label) {
+  document.body.className = 'st-' + estado
+  document.getElementById('estado-txt').textContent = label.toUpperCase()
+}
+
+// ════════════════════════════════════════════════════
+//  HORA
+// ════════════════════════════════════════════════════
+function actualizarHora() {
+  const n = new Date()
+  document.getElementById('hdr-hora').textContent =
+    String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0')
+}
+
+// ════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════
+let _tt
+function toast(msg, tipo='') {
+  const el = document.getElementById('toast')
+  el.textContent = msg
+  el.className = 'show' + (tipo ? ' t-'+tipo : '')
+  clearTimeout(_tt); _tt = setTimeout(() => el.classList.remove('show'), 3200)
+}
+
+// ════════════════════════════════════════════════════
+//  CHAT
+// ════════════════════════════════════════════════════
+const chatEl  = document.getElementById('chat')
+const typingEl = document.getElementById('typing')
+const inp     = document.getElementById('inp')
+const btnSend = document.getElementById('btn-send')
+
+function abrirHistorial() {
+  chatEl.scrollTop = chatEl.scrollHeight
+}
+
+function ahora() {
+  const n = new Date()
+  return String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')
+}
+
+function addMsg(texto, lado, intent) {
+  document.getElementById('chat-empty').style.display = 'none'
+  const wrap = document.createElement('div')
+  wrap.className = `msg ${lado}` + (intent ? ` intent-${intent}` : '')
+  const av = document.createElement('div'); av.className = 'msg-av'
+  if (lado === 'lima') { av.style.background='linear-gradient(135deg,#7c3aed,#4f46e5)'; av.textContent='L'; av.style.cssText+=';color:#fff;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center' }
+  else av.textContent = '👤'
+  const inner = document.createElement('div'); inner.className = 'msg-inner'
+  const bub = document.createElement('div'); bub.className = 'msg-bubble'; bub.textContent = texto
+  const tm  = document.createElement('div'); tm.className = 'msg-time'; tm.textContent = ahora()
+  inner.appendChild(bub); inner.appendChild(tm)
+  wrap.appendChild(av); wrap.appendChild(inner)
+  chatEl.insertBefore(wrap, typingEl)
+  requestAnimationFrame(() => { chatEl.scrollTop = chatEl.scrollHeight })
+}
+
+function setTyping(v) { typingEl.className = v ? 'show' : '' }
+
+function limpiarChat() {
+  document.querySelectorAll('#chat .msg').forEach(m => m.remove())
+  document.getElementById('chat-empty').style.display = ''
+}
+
+// ════════════════════════════════════════════════════
+//  MÓDULOS — side buttons
+// ════════════════════════════════════════════════════
+function aplicarModulos() {
+  const mods = getMods()
+  // Mapa: btn id → mod id
+  const map = { 'sbtn-alarma':'alarma', 'sbtn-hogar':'casa', 'sbtn-gps':'gps', 'sbtn-edificio':'edificio' }
+  for (const [id, mod] of Object.entries(map)) {
+    const btn = document.getElementById(id)
+    if (!btn) continue
+    if (mods.includes(mod)) btn.classList.remove('locked')
+    else btn.classList.add('locked')
+  }
+  // Pánico: mostrar si tiene alarma o notif
+  const panic = document.getElementById('sbtn-panico')
+  if (mods.includes('alarma') || mods.includes('notif')) panic.classList.remove('locked')
+  else panic.classList.add('locked')
+  // Historial: siempre visible
+}
+
+function mostrarCambiarPassword() {
+  document.getElementById('mod-panel').classList.remove('show')
+  document.getElementById('modulo-titulo').textContent = 'Contraseña'
+  document.getElementById('modulo-body').innerHTML =
+    '<div class="mod-card" style="gap:10px">' +
+    '<div style="font-size:12px;color:var(--muted)">Ingresá tu contraseña actual y la nueva.</div>' +
+    '<div class="fg" style="margin:0"><label style="font-size:11px">Contraseña actual</label>' +
+    '<div style="position:relative"><input id="cp-actual" type="password" placeholder="Contraseña actual" style="width:100%;padding-right:34px"/>' +
+    '<button type="button" onclick="cpToggle('cp-actual')" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px">👁</button></div></div>' +
+    '<div class="fg" style="margin:0"><label style="font-size:11px">Nueva contraseña</label>' +
+    '<div style="position:relative"><input id="cp-nueva" type="password" placeholder="Mínimo 6 caracteres" style="width:100%;padding-right:34px"/>' +
+    '<button type="button" onclick="cpToggle('cp-nueva')" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px">👁</button></div></div>' +
+    '<div id="cp-err" style="color:#f87171;font-size:12px;min-height:16px"></div>' +
+    '<div style="display:flex;gap:8px;margin-top:2px">' +
+    '<button class="mod-btn secondary" onclick="cerrarModulo()" style="flex:1">Cancelar</button>' +
+    '<button class="mod-btn" onclick="confirmarCambioPass()" style="flex:1">Guardar</button></div></div>'
+  document.getElementById('modulo-panel').classList.add('show')
+}
+
+function cpToggle(id) {
+  const el = document.getElementById(id)
+  if (el) el.type = el.type === 'password' ? 'text' : 'password'
+}
+
+async function confirmarCambioPass() {
+  const currentPassword = document.getElementById('cp-actual')?.value || ''
+  const newPassword     = document.getElementById('cp-nueva')?.value  || ''
+  const errEl = document.getElementById('cp-err')
+  if (!currentPassword || !newPassword) { if(errEl) errEl.textContent = 'Completá ambos campos'; return }
+  if (newPassword.length < 6)            { if(errEl) errEl.textContent = 'Mínimo 6 caracteres'; return }
+  if (errEl) errEl.textContent = ''
+  try {
+    const r = await fetch('/api/usuario/password', {
+      method: 'PUT',
+      headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + (getToken() || '') },
+      body: JSON.stringify({ currentPassword, newPassword })
+    })
+    const d = await r.json()
+    if (!r.ok || !d.ok) { if(errEl) errEl.textContent = d.error || 'Error'; return }
+    cerrarModulo()
+    toast('Contraseña actualizada', 'ok')
+  } catch { if(errEl) errEl.textContent = 'Error de conexión' }
+}
+
+function mostrarModulos() {
+  const mods = getMods()
+  const u    = getUsuario()
+  document.getElementById('mod-cliente').textContent = u?.nombre || '—'
+  document.getElementById('mod-list').innerHTML = ALL_MODS.map(m => {
+    const on = mods.includes(m.id)
+    return `<div class="mod-item">
+      <div class="mod-ico">${m.ico}</div>
+      <div class="mod-info"><div class="mod-name">${m.name}</div><div class="mod-desc">${m.desc}</div></div>
+      <div class="mod-badge ${on?'on':'off'}">${on?'ACTIVO':'INACTIVO'}</div>
+    </div>`
+  }).join('')
+  document.getElementById('mod-panel').classList.add('show')
+}
+
+// ════════════════════════════════════════════════════
+//  AUDIO (beeps)
+// ════════════════════════════════════════════════════
+const AC = window.AudioContext || window.webkitAudioContext
+let actx
+function beep(f=660,d=.08,v=.18) {
+  if(!actx) actx = new AC()
+  const o=actx.createOscillator(),g=actx.createGain()
+  o.connect(g);g.connect(actx.destination)
+  o.frequency.value=f;g.gain.setValueAtTime(v,actx.currentTime)
+  g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d)
+  o.start();o.stop(actx.currentTime+d)
+}
+function beepOk()    { beep(660,.07);setTimeout(()=>beep(880,.09),100) }
+function beepErr()   { beep(220,.25,.3) }
+function beepAlarm() { beep(880,.1);setTimeout(()=>beep(880,.1),150);setTimeout(()=>beep(1100,.2),300) }
+function beepPanic() { for(let i=0;i<5;i++) setTimeout(()=>beep(1200,.1,.4),i*120) }
+
+// ════════════════════════════════════════════════════
+//  RESPUESTA IA
+// ════════════════════════════════════════════════════
+let bloqueado = false
+
+function handleRespuesta(data) {
+  setTyping(false)
+  btnSend.disabled = false
+  const intent = data.intent || 'desconocido'
+  addMsg(data.respuesta, 'lima', intent)
+  // Mostrar animación según resultado
+  if (data.intent === 'desactivar' || data.intent === 'activar' || data.intent === 'armar_parcial') {
+    if (data.esperandoPin) {
+      // nada, ya está en speaking
+    }
+  }
+  if (data.intent && data.intent.includes('correcto') || (data.respuesta && data.respuesta.toLowerCase().includes('código correcto'))) {
+    setTimeout(() => setAvatarState('correcto'), 200)
+  } else if (data.intent === 'pin_incorrecto' || data.intent === 'bloqueado' || data.intent === 'error') {
+    setTimeout(() => setAvatarState('error'), 200)
+  }
+  hablarRespuesta(data.respuesta)
+  if (!ttsEnabled) setAvatarState('idle')
+  if (data.esperandoPin) { mostrarPin(); return }
+  switch(intent) {
+    case 'activar':
+      setEstado('armado','Armado'); beepAlarm()
+      break
+    case 'desactivar':
+      setEstado('desarmado','Desarmado'); beepOk()
+      break
+    case 'panico':
+      setEstado('panico','PÁNICO'); beepPanic()
+      if(navigator.vibrate) navigator.vibrate([300,100,300,100,300])
+      break
+    case 'bloqueado':
+      setEstado('bloqueado','Bloqueado'); beepErr()
+      bloqueado = true
+      setTimeout(()=>{ bloqueado=false; setEstado('desarmado','Desarmado') }, 60000)
+      break
+    case 'error': beepErr(); break
+    default: if(data.respuesta) beepOk()
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  ENVIAR
+// ════════════════════════════════════════════════════
+async function enviar() {
+  const texto = inp.value.trim()
+  if (!texto || bloqueado) return
+  addMsg(texto, 'user')
+  inp.value = ''; inp.style.height = 'auto'
+  setTyping(true); btnSend.disabled = true
+  setAvatarState('processing')
+  const u = getUsuario()
+  try {
+    const r = await fetch(API, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(getToken()||'')},
+      body: JSON.stringify({ texto, usuario: u?.nombre || 'usuario' })
+    })
+    const d = await r.json()
+    if (r.status === 401) { logout(); return }
+    handleRespuesta(d)
+  } catch {
+    setTyping(false); btnSend.disabled=false; setAvatarState('idle')
+    addMsg('Error de conexión con LIMA.','lima','error'); beepErr()
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  PANEL MÓDULOS — Alarma, GPS, Hogar, Pánico
+// ════════════════════════════════════════════════════
+function _abrirModulo(titulo) {
+  document.getElementById('modulo-titulo').textContent = titulo
+  document.getElementById('modulo-body').innerHTML = '<div class="mod-spinner">Cargando...</div>'
+  document.getElementById('modulo-panel').classList.add('show')
+}
+
+function cerrarModulo() {
+  document.getElementById('modulo-panel').classList.remove('show')
+}
+
+// ── MI ALARMA ─────────────────────────────────────
+async function abrirModuloAlarma() {
+  _abrirModulo('🔔 Mi Alarma')
+  try {
+    const hdr = { Authorization: 'Bearer ' + (getToken() || '') }
+    const [r, rb] = await Promise.all([
+      fetch('/api/modulo/alarma', { headers: hdr }),
+      fetch('/api/modulo/alarma/bridge', { headers: hdr })
+    ])
+    const d  = await r.json()
+    const br = rb.ok ? await rb.json() : { online: false, panel_estado: 'desconocido' }
+    if (!d.ok) {
+      document.getElementById('modulo-body').innerHTML = `<div class="mod-error">${d.error || 'Sin datos'}</div>`
+      return
+    }
+    const ec = d.estado === 'armado' ? 'armado'
+             : d.estado === 'desarmado' ? 'desarmado'
+             : (d.estado === 'alarma' || d.estado === 'panico') ? 'alarma'
+             : 'desconocido'
+    const el = { armado:'Armado', desarmado:'Desarmado', alarma:'ALARMA', panico:'PÁNICO', desconocido:'Desconocido' }[d.estado] || d.estado
+    const evHtml = (d.eventos || []).map(ev => {
+      const f = ev.fecha ? new Date(ev.fecha).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : ''
+      return `<div class="mod-evento-row">
+        <div class="mod-evento-fecha">${f}</div>
+        <div class="mod-evento-desc">${ev.descripcion || ev.zona || '—'}</div>
+      </div>`
+    }).join('')
+    const bridgeHtml = br.online
+      ? `<div class="mod-card" style="gap:10px">
+          <div class="mod-label" style="margin-bottom:2px">Control del panel</div>
+          <div style="display:flex;gap:8px">
+            <button class="mod-btn danger" style="flex:1" onclick="comandoAlarma('armar')">🔒 Armar</button>
+            <button class="mod-btn" style="flex:1;background:linear-gradient(135deg,#065f46,#10b981)" onclick="comandoAlarma('desarmar')">🔓 Desarmar</button>
+          </div>
+          <button class="mod-btn secondary" onclick="comandoAlarma('parcial')">🏠 Armado Parcial</button>
+        </div>`
+      : `<div class="mod-card" style="text-align:center;padding:12px">
+          <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Panel no conectado</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">Bridge offline — instalar dispositivo LIMA Bridge</div>
+        </div>`
+    document.getElementById('modulo-body').innerHTML = `
+      <div class="mod-card">
+        <div class="mod-card-row">
+          <div><div class="mod-label">Estado actual</div></div>
+          <div class="mod-estado-badge ${ec}">${el}</div>
+        </div>
+      </div>
+      ${bridgeHtml}
+      ${d.eventos?.length ? `<div class="mod-card">
+        <div class="mod-label" style="margin-bottom:6px">Últimos eventos</div>
+        ${evHtml}
+      </div>` : ''}
+    `
+    if (d.estado === 'armado') setEstado('armado','Armado')
+    else if (d.estado === 'desarmado') setEstado('desarmado','Desarmado')
+    else if (d.estado === 'alarma' || d.estado === 'panico') setEstado('panico', el)
+  } catch {
+    document.getElementById('modulo-body').innerHTML = '<div class="mod-error">Error de conexión</div>'
+  }
+}
+
+async function comandoAlarma(accion) {
+  const btns = document.querySelectorAll('#modulo-body .mod-btn')
+  btns.forEach(b => { b.disabled = true; b.style.opacity = '0.5' })
+  try {
+    const r = await fetch('/api/modulo/alarma/comando', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + (getToken() || '') },
+      body: JSON.stringify({ accion })
+    })
+    const d = await r.json()
+    if (!d.ok) {
+      alert(d.error || 'Error al enviar comando')
+      btns.forEach(b => { b.disabled = false; b.style.opacity = '' })
+      return
+    }
+    setTimeout(() => abrirModuloAlarma(), 1500)
+  } catch {
+    alert('Error de conexión')
+    btns.forEach(b => { b.disabled = false; b.style.opacity = '' })
+  }
+}
+
+// ── MI GPS ────────────────────────────────────────
+async function abrirModuloGPS() {
+  _abrirModulo('📍 Mi GPS')
+  try {
+    const r = await fetch('/api/modulo/gps', {
+      headers: { Authorization: 'Bearer ' + (getToken() || '') }
+    })
+    const d = await r.json()
+    if (!d.ok) {
+      document.getElementById('modulo-body').innerHTML = `<div class="mod-error">${d.error || 'Sin datos'}</div>`
+      return
+    }
+    const v = d.dispositivo
+    const online = v.online
+    const mapaUrl = v.lat && v.lng ? `https://maps.google.com/?q=${v.lat},${v.lng}` : null
+    const row = (lbl, val) => val ? `<div class="mod-card-row"><div class="mod-label">${lbl}</div><div style="font-size:13px;color:var(--text)">${val}</div></div>` : ''
+    document.getElementById('modulo-body').innerHTML = `
+      <div class="mod-card">
+        <div class="mod-card-row">
+          <div><div class="mod-label">Dispositivo</div><div class="mod-value">${v.nombre || v.patente || '—'}</div></div>
+          <div class="mod-badge ${online ? 'on' : 'off'}">${online ? 'EN LÍNEA' : 'OFFLINE'}</div>
+        </div>
+        ${row('Patente', v.patente)}
+        ${row('Vehículo', v.marca_vehiculo)}
+        ${row('Conductor', v.conductor)}
+        ${v.velocidad !== undefined ? `<div class="mod-card-row"><div class="mod-label">Velocidad</div><div class="mod-value ${online ? 'online' : 'offline'}">${v.velocidad} km/h</div></div>` : ''}
+        ${v.ultima_vez ? `<div class="mod-card-row"><div class="mod-label">Última actualización</div><div style="font-size:11px;color:var(--muted)">${new Date(v.ultima_vez).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div></div>` : ''}
+      </div>
+      ${mapaUrl ? `<a href="${mapaUrl}" target="_blank" rel="noopener" style="text-decoration:none"><button class="mod-btn secondary">📍 Ver en Google Maps</button></a>` : ''}
+    `
+  } catch {
+    document.getElementById('modulo-body').innerHTML = '<div class="mod-error">Error de conexión</div>'
+  }
+}
+
+// ── MI HOGAR ──────────────────────────────────────
+async function abrirModuloHogar() {
+  _abrirModulo('🏠 Mi Hogar')
+  try {
+    const r = await fetch('/api/modulo/hogar', {
+      headers: { Authorization: 'Bearer ' + (getToken() || '') }
+    })
+    const d = await r.json()
+    if (!d.ok) {
+      document.getElementById('modulo-body').innerHTML = `<div class="mod-error">${d.error || 'Sin datos'}</div>`
+      return
+    }
+    if (!d.entidades?.length) {
+      document.getElementById('modulo-body').innerHTML = '<div class="mod-error">Sin dispositivos encontrados</div>'
+      return
+    }
+    const domNombres = { light:'Luces', switch:'Interruptores', cover:'Persianas / Portones', climate:'Climatización', fan:'Ventiladores' }
+    const grupos = {}
+    for (const e of d.entidades) {
+      if (!grupos[e.dominio]) grupos[e.dominio] = []
+      grupos[e.dominio].push(e)
+    }
+    let html = ''
+    for (const [dom, items] of Object.entries(grupos)) {
+      html += `<div class="mod-card">
+        <div class="mod-label" style="margin-bottom:8px">${domNombres[dom] || dom}</div>
+        ${items.map(e => `
+          <div class="ha-device">
+            <div style="flex:1">
+              <div class="ha-device-name">${e.nombre}</div>
+              <div class="ha-device-domain">${e.dominio}</div>
+            </div>
+            <button class="ha-toggle ${e.estado === 'on' ? 'on' : 'off'}"
+                    onclick="toggleHogar('${e.id}',this)"
+                    title="${e.estado === 'on' ? 'Apagar' : 'Encender'}"></button>
+          </div>
+        `).join('')}
+      </div>`
+    }
+    document.getElementById('modulo-body').innerHTML = html
+  } catch {
+    document.getElementById('modulo-body').innerHTML = '<div class="mod-error">Error de conexión</div>'
+  }
+}
+
+async function toggleHogar(entityId, btn) {
+  btn.disabled = true
+  try {
+    const r = await fetch('/api/modulo/hogar/toggle', {
+      method:'POST',
+      headers:{ Authorization:'Bearer '+(getToken()||''), 'Content-Type':'application/json' },
+      body: JSON.stringify({ entity_id: entityId })
+    })
+    const d = await r.json()
+    if (d.ok) {
+      const wasOff = btn.classList.contains('off')
+      btn.className = 'ha-toggle ' + (wasOff ? 'on' : 'off')
+      beepOk()
+    } else {
+      toast('No se pudo controlar el dispositivo','t-err'); beepErr()
+    }
+  } catch {
+    toast('Error de conexión','t-err'); beepErr()
+  } finally {
+    btn.disabled = false
+  }
+}
+
+// ── MI EDIFICIO ───────────────────────────────────
+function abrirModuloEdificio() {
+  _abrirModulo('🏢 Mi Edificio')
+  document.getElementById('modulo-body').innerHTML = `
+    <div class="mod-card" style="text-align:center;gap:16px;align-items:center">
+      <div style="font-size:44px">🏢</div>
+      <div style="font-size:15px;font-weight:700;color:var(--pL)">Próximamente</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6">El módulo de edificio estará<br>disponible en una próxima actualización</div>
+      <button class="mod-btn secondary" onclick="cerrarModulo()" style="margin-top:4px">Cerrar</button>
+    </div>
+  `
+}
+
+// ── PÁNICO ────────────────────────────────────────
+let panicoCooldown = false
+
+function accionPanico() {
+  if (panicoCooldown) { toast('Espera antes de enviar otra alerta','t-err'); return }
+  document.getElementById('modulo-titulo').textContent = 'Emergencia'
+  document.getElementById('modulo-body').innerHTML = [
+    '<div id="panic-grid">',
+    '<div class="panic-opt p-sonoro" onclick="seleccionarPanico(\'sonoro\')">' + '<svg viewBox="0 0 24 24" fill="none" stroke="rgba(239,68,68,.9)" stroke-width="2" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>' + '<span>Panico<br>Sonoro</span></div>',
+    '<div class="panic-opt p-silencioso" onclick="seleccionarPanico(\'silencioso\')">' + '<svg viewBox="0 0 24 24" fill="none" stroke="rgba(245,158,11,.9)" stroke-width="2" stroke-linecap="round"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="2" y1="2" x2="22" y2="22"/></svg>' + '<span>Panico<br>Silencioso</span></div>',
+    '<div class="panic-opt p-fuego" onclick="seleccionarPanico(\'fuego\')">' + '<svg viewBox="0 0 24 24" fill="none" stroke="rgba(249,115,22,.9)" stroke-width="2" stroke-linecap="round"><path d="M12 2s-5 5-5 10a5 5 0 0 0 10 0c0-3.5-2-6-2-6s0 3.5-3 5c-1.5-1.5-0-4 0-4S12 2 12 2z"/></svg>' + '<span>Alarma<br>de Fuego</span></div>',
+    '<div class="panic-opt p-ayuda" onclick="seleccionarPanico(\'ayuda\')">' + '<svg viewBox="0 0 24 24" fill="none" stroke="rgba(99,102,241,.9)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>' + '<span>Pedir<br>Ayuda</span></div>',
+    '</div>',
+    '<button class="mod-btn secondary" onclick="cerrarModulo()" style="width:100%;margin-top:8px">Cancelar</button>'
+  ].join('')
+  document.getElementById('modulo-panel').classList.add('show')
+  if (navigator.vibrate) navigator.vibrate([50,30,50])
+}
+
+const PANIC_INFO = {
+  sonoro:     { label: 'Panico Sonoro',     color: 'rgba(239,68,68,.9)' },
+  silencioso: { label: 'Panico Silencioso',  color: 'rgba(245,158,11,.9)' },
+  fuego:      { label: 'Alarma de Fuego',   color: 'rgba(249,115,22,.9)' },
+  ayuda:      { label: 'Pedir Ayuda + GPS', color: 'rgba(99,102,241,.9)' },
+}
+
+function seleccionarPanico(tipo) {
+  const info = PANIC_INFO[tipo] || PANIC_INFO.sonoro
+  document.getElementById('modulo-body').innerHTML =
+    '<div class="mod-card" style="border-color:' + info.color.replace('.9','.3') + ';align-items:center;text-align:center;gap:14px">' +
+    '<div style="font-size:14px;font-weight:700;color:' + info.color + '">' + info.label + '</div>' +
+    '<div style="font-size:12px;color:var(--muted)">Confirmar alerta de emergencia.<br>Se notificara a la central.</div>' +
+    '<div style="display:flex;gap:10px;width:100%;margin-top:4px">' +
+    '<button class="mod-btn secondary" onclick="accionPanico()" style="flex:1">Volver</button>' +
+    '<button class="mod-btn danger" onclick="confirmarPanico(\''+ tipo +'\')" style="flex:1">ENVIAR</button></div></div>'
+}
+
+async function confirmarPanico(tipo) {
+  tipo = tipo || 'sonoro'
+  if (panicoCooldown) return
+  panicoCooldown = true
+  document.getElementById('modulo-body').innerHTML = '<div class="mod-spinner">Enviando alerta...</div>'
+  let lat = null, lng = null
+  if (tipo === 'ayuda' && navigator.geolocation) {
+    try {
+      const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:5000}))
+      lat = pos.coords.latitude; lng = pos.coords.longitude
+    } catch {}
+  }
+  try {
+    const r = await fetch('/api/modulo/panico', {
+      method:'POST',
+      headers:{ Authorization:'Bearer '+(getToken()||''), 'Content-Type':'application/json' },
+      body: JSON.stringify({ tipo, lat, lng })
+    })
+    const d = await r.json()
+    if (d.ok) {
+      document.getElementById('modulo-body').innerHTML = `
+        <div class="mod-card" style="border-color:rgba(16,185,129,.4);align-items:center;text-align:center;gap:14px">
+          <div style="font-size:44px">✅</div>
+          <div style="font-size:15px;font-weight:700;color:var(--green)">Alerta enviada</div>
+          <div style="font-size:12px;color:var(--muted)">La central de monitoreo fue notificada</div>
+          <button class="mod-btn secondary" onclick="cerrarModulo()" style="margin-top:4px;width:100%">Cerrar</button>
+        </div>
+      `
+      setEstado('panico','PÁNICO'); beepPanic()
+      if (navigator.vibrate) navigator.vibrate([300,100,300,100,300])
+    } else {
+      document.getElementById('modulo-body').innerHTML = `<div class="mod-error">${d.error||'No se pudo enviar la alerta'}</div>`
+      beepErr()
+    }
+  } catch {
+    document.getElementById('modulo-body').innerHTML = '<div class="mod-error">Error de conexión</div>'
+    beepErr()
+  }
+  setTimeout(() => { panicoCooldown = false }, 30000)
+}
+
+// ════════════════════════════════════════════════════
+//  ACCIONES DE BOTONES LATERALES
+// ════════════════════════════════════════════════════
+function accionBtn(tipo) {
+  switch(tipo) {
+    case 'alarma':   abrirModuloAlarma(); break
+    case 'hogar':    abrirModuloHogar(); break
+    case 'gps':      abrirModuloGPS(); break
+    case 'edificio': abrirModuloEdificio(); break
+    default: { const cmd = BTN_CMDS[tipo]; if(cmd){ inp.value=cmd; enviar() } }
+  }
+}
+
+
+// ════════════════════════════════════════════════════
+//  TTS — Síntesis de voz
+// ════════════════════════════════════════════════════
+function hablarRespuesta(texto) {
+  if (!ttsEnabled || !texto) {
+    setAvatarState('idle')
+    setWaveState('idle')
+    if (vozContinua) setTimeout(iniciarEscucha, 600)
+    return
+  }
+  window.speechSynthesis.cancel()
+  const utter = new SpeechSynthesisUtterance(texto)
+  utter.lang  = 'es-AR'
+  utter.rate  = 1.05
+  utter.pitch = 1.0
+  utter.onstart = () => {
+    setAvatarState('speaking')
+    setWaveState('speaking')
+  }
+  utter.onboundary = (e) => {
+    if (e.name === 'word') {
+      // Pulso de amplitud por cada palabra
+      voiceWave.target = 18 + Math.random() * 16
+      voiceWave.freq   = 2.5 + Math.random() * 3
+      // Decae suavemente hasta el próximo pulso
+      clearTimeout(voiceWave._t)
+      voiceWave._t = setTimeout(() => { voiceWave.target = 8 + Math.random() * 8 }, 120)
+    }
+  }
+  utter.onend = () => {
+    setAvatarState('idle')
+    setWaveState('idle')
+    if (vozContinua) setTimeout(iniciarEscucha, 1800)
+  }
+  utter.onerror = () => {
+    setAvatarState('idle')
+    setWaveState('idle')
+  }
+  window.speechSynthesis.speak(utter)
+}
+
+// ════════════════════════════════════════════════════
+//  VOZ — MediaRecorder → Groq Whisper + Modo continuo con detección de silencio
+// ════════════════════════════════════════════════════
+let mediaRecorder  = null
+let audioChunks    = []
+let grabando       = false
+let ttsEnabled     = true       // TTS ON por defecto
+let vozContinua    = false      // OFF por defecto — usuario activa cuando quiere
+let silenceTimer   = null
+let audioCtx       = null
+let analyser       = null
+let micStream      = null
+
+function actualizarBtnMic() {
+  const btn = document.getElementById('btn-mic-in')
+  if (!btn) return
+  if (vozContinua) {
+    btn.textContent = grabando ? '⏹ Escuchando...' : '🎙 Voz ON'
+    btn.title = 'Click para hablar / Mantener para desactivar voz continua'
+    btn.style.color = grabando ? 'var(--red)' : 'var(--pL)'
+    btn.style.borderColor = grabando ? 'var(--red)' : 'rgba(139,92,246,.5)'
+  } else {
+    btn.textContent = '🎙 Voz OFF'
+    btn.title = 'Voz continua desactivada — click para activar'
+    btn.style.color = 'var(--muted)'
+    btn.style.borderColor = 'rgba(139,92,246,.2)'
+  }
+}
+
+
+function toggleTTS() {
+  ttsEnabled = !ttsEnabled
+  const btn = document.getElementById('btn-tts')
+  if (ttsEnabled) {
+    btn.className = 'on'
+    btn.textContent = '🔊 VOZ'
+    toast('Voz activada', 't-ok')
+  } else {
+    btn.className = ''
+    btn.textContent = '🔇 VOZ'
+    toast('Voz desactivada', 't-warn')
+  }
+}
+
+function toggleVozContinua() {
+  vozContinua = !vozContinua
+  actualizarBtnMic()
+  if (vozContinua) {
+    toast('Voz continua activada', 't-ok')
+    setTimeout(iniciarEscucha, 600)
+  } else {
+    toast('Voz continua desactivada', 't-warn')
+    if (grabando) mediaRecorder?.stop()
+    detenerSilenceDetector()
+  }
+}
+
+// Click corto = grabar manual / click largo = toggle modo continuo
+let btnMicPressTimer = null
+function btnMicPointerDown() {
+  btnMicPressTimer = setTimeout(() => {
+    btnMicPressTimer = null
+    toggleVozContinua()
+  }, 600)
+}
+function btnMicPointerUp() {
+  if (btnMicPressTimer) {
+    clearTimeout(btnMicPressTimer)
+    btnMicPressTimer = null
+    // Click corto
+    if (grabando) {
+      mediaRecorder?.stop()
+    } else {
+      iniciarEscucha()
+    }
+  }
+}
+
+function detenerSilenceDetector() {
+  if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null }
+  if (analyser)     { analyser = null }
+  if (audioCtx)     { try { audioCtx.close() } catch {} ; audioCtx = null }
+}
+
+function iniciarSilenceDetector(stream) {
+  try {
+    audioCtx  = new (window.AudioContext || window.webkitAudioContext)()
+    analyser  = audioCtx.createAnalyser()
+    analyser.fftSize = 512
+    const src = audioCtx.createMediaStreamSource(stream)
+    src.connect(analyser)
+    const buf = new Uint8Array(analyser.frequencyBinCount)
+    let silentMs = 0
+    const UMBRAL    = 8    // nivel mínimo de sonido
+    const SILENCIO  = 1800 // ms de silencio para cortar
+    const MIN_AUDIO = 800  // ms mínimos grabando antes de cortar por silencio
+
+    let startTime = Date.now()
+
+    function checkSilence() {
+      if (!grabando || !analyser) return
+      analyser.getByteTimeDomainData(buf)
+      let sum = 0
+      for (let i = 0; i < buf.length; i++) sum += Math.abs(buf[i] - 128)
+      const nivel = sum / buf.length
+
+      if (nivel < UMBRAL) {
+        silentMs += 100
+        if (silentMs >= SILENCIO && (Date.now() - startTime) >= MIN_AUDIO) {
+          mediaRecorder?.stop()
+          return
+        }
+      } else {
+        silentMs = 0
+      }
+      silenceTimer = setTimeout(checkSilence, 100)
+    }
+    silenceTimer = setTimeout(checkSilence, 100)
+  } catch (e) {
+    console.warn('[LIMA] Silence detector no disponible:', e.message)
+  }
+}
+
+async function iniciarEscucha() {
+  if (grabando) return
+  if (!navigator.mediaDevices?.getUserMedia) {
+    toast('Micrófono no disponible', 't-err'); return
+  }
+  try {
+    const stream   = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation:true, noiseSuppression:true } })
+    micStream      = stream
+    const mimeType = ['audio/webm;codecs=opus','audio/webm','audio/ogg','audio/mp4']
+                       .find(t => MediaRecorder.isTypeSupported(t)) || ''
+    mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {})
+    audioChunks   = []
+
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data) }
+
+    let recStartTime = 0
+    mediaRecorder.onstart = () => {
+      grabando = true
+      recStartTime = Date.now()
+      setAvatarState('listening')
+      actualizarBtnMic()
+      if (navigator.vibrate) navigator.vibrate(50)
+      iniciarSilenceDetector(stream)
+    }
+
+    mediaRecorder.onstop = async () => {
+      grabando = false
+      detenerSilenceDetector()
+      stream.getTracks().forEach(t => t.stop())
+      actualizarBtnMic()
+
+      const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' })
+      const recDuration = Date.now() - recStartTime
+      if (blob.size < 5000 || recDuration < 1200) {
+        // Audio demasiado corto o vacío — evita alucinaciones de Whisper
+        setAvatarState('idle')
+        if (vozContinua) setTimeout(iniciarEscucha, 800)
+        return
+      }
+
+      setAvatarState('processing')
+      const fd = new FormData()
+      fd.append('audio', blob, 'audio.webm')
+
+      try {
+        const r = await fetch('/api/transcribir', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + (getToken() || '') },
+          body: fd
+        })
+        const d = await r.json()
+        if (d.texto?.trim()) {
+          inp.value = d.texto.trim()
+          enviar()
+          // El mic se reactiva en hablarRespuesta.onend
+        } else {
+          setAvatarState('idle')
+          if (vozContinua) setTimeout(iniciarEscucha, 800)
+        }
+      } catch {
+        setAvatarState('idle')
+        if (vozContinua) setTimeout(iniciarEscucha, 800)
+        toast('Error al procesar audio', 't-err')
+      }
+    }
+
+    mediaRecorder.start()
+  } catch (e) {
+    if (e.name === 'NotAllowedError' || e.name === 'NotFoundError') {
+      vozContinua = false
+      actualizarBtnMic()
+      toast(e.name === 'NotFoundError' ? 'Sin micrófono — voz desactivada' : 'Permiso de micrófono denegado', 't-err')
+    } else {
+      toast('No se pudo acceder al micrófono', 't-err')
+      if (vozContinua) setTimeout(iniciarEscucha, 3000)
+    }
+  }
+}
+
+// Compatibilidad: toggleVoz sigue funcionando para llamadas existentes
+function toggleVoz() {
+  if (grabando) mediaRecorder?.stop()
+  else iniciarEscucha()
+}
+
+// ════════════════════════════════════════════════════
+//  PIN
+// ════════════════════════════════════════════════════
+let pinVal = ''
+function mostrarPin() {
+  pinVal = ''; actualizarPinDots()
+  document.getElementById('pin-err').textContent = ''
+  document.getElementById('pin-overlay').classList.add('show')
+}
+function cerrarPin() { document.getElementById('pin-overlay').classList.remove('show') }
+function actualizarPinDots() {
+  for(let i=0;i<4;i++)
+    document.getElementById('pd'+i).className = 'pin-dot'+(i<pinVal.length?' filled':'')
+}
+function pinKey(k) {
+  if(k==='del') { pinVal=pinVal.slice(0,-1); actualizarPinDots(); return }
+  if(k==='ok') { enviarPin(); return }
+  if(pinVal.length < 4) { pinVal+=k; actualizarPinDots() }
+  if(pinVal.length === 4) setTimeout(enviarPin, 180)
+}
+async function enviarPin() {
+  cerrarPin(); inp.value = pinVal; pinVal = ''; await enviar()
+}
+
+// ════════════════════════════════════════════════════
+//  LOGIN
+// ════════════════════════════════════════════════════
+async function hacerLogin() {
+  const email = document.getElementById('l-email').value.trim()
+  const pass  = document.getElementById('l-pass').value
+  const err   = document.getElementById('login-err')
+  const btn   = document.getElementById('btn-login')
+  err.textContent = ''
+  if(!email||!pass) { err.textContent='Completá email y contraseña'; return }
+  btn.disabled=true; btn.textContent='VERIFICANDO...'
+  try {
+    const r = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})})
+    const d = await r.json()
+    if(!r.ok) { err.textContent=d.error||'Error de acceso'; return }
+    localStorage.setItem(TK, d.token)
+    localStorage.setItem(UK, JSON.stringify(d.usuario))
+    localStorage.setItem(MK, JSON.stringify(d.modulos||[]))
+    document.getElementById('login').classList.add('hide')
+    iniciar()
+  } catch { err.textContent='Error de conexión' }
+  finally { btn.disabled=false; btn.textContent='INGRESAR' }
+}
+function logout() { localStorage.clear(); location.reload() }
+
+// ════════════════════════════════════════════════════
+//  ESTADO INICIAL
+// ════════════════════════════════════════════════════
+async function cargarEstado() {
+  try {
+    const r = await fetch('/estado',{headers:{Authorization:'Bearer '+(getToken()||'')}})
+    if(!r.ok) return
+    const d = await r.json()
+    setEstado(d.armado?'armado':'desarmado', d.armado?'Armado':'Desarmado')
+  } catch {}
+}
+
+// ════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════
+function iniciar() {
+  const u = getUsuario()
+  if(u) document.getElementById('hdr-usuario').textContent = u.nombre||u.email||''
+  aplicarModulos()
+  // Sincronizar botón TTS con estado inicial
+  const btnTts = document.getElementById('btn-tts')
+  if (ttsEnabled) { btnTts.className='on'; btnTts.textContent='🔊 VOZ' }
+  actualizarHora()
+  setInterval(actualizarHora, 15000)
+  initWaveCanvas()
+  initSphereCanvas()
+  setAvatarState('idle')
+  wRafId = requestAnimationFrame(drawWave)
+  sphereLoop(0)
+  cargarEstado()
+  actualizarBtnMic()
+  setTimeout(() => {
+    const nombre = u?.nombre?.split(' ')[0] || ''
+    addMsg(`Hola${nombre?' '+nombre:''}, soy LIMA. ¿En qué puedo ayudarte?`, 'lima', 'bienvenida')
+    // Saludo inicial: hablar sin activar escucha automática al terminar
+    if (ttsEnabled) {
+      window.speechSynthesis.cancel()
+      const utter = new SpeechSynthesisUtterance(`Hola${nombre?' '+nombre:''}, soy LIMA. ¿En qué puedo ayudarte?`)
+      utter.lang = 'es-AR'; utter.rate = 1.05
+      utter.onstart = () => { setAvatarState('speaking'); setWaveState('speaking') }
+      utter.onend = () => {
+        setAvatarState('idle'); setWaveState('idle')
+        if (vozContinua) setTimeout(iniciarEscucha, 2500)  // pausa extra en saludo
+      }
+      window.speechSynthesis.speak(utter)
+    } else if (vozContinua) {
+      setTimeout(iniciarEscucha, 1200)
+    }
+  }, 800)
+}
+
+// Input
+inp.addEventListener('input', function() {
+  this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,80)+'px'
+})
+inp.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviar()} })
+document.getElementById('l-pass').addEventListener('keydown',  e=>{ if(e.key==='Enter') hacerLogin() })
+document.getElementById('l-email').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('l-pass').focus() })
+window.addEventListener('resize', initWaveCanvas)
+
+// Auto-arranque si hay token
+if(getToken()) {
+  // Verificar token y refrescar datos del usuario antes de iniciar
+  fetch('/api/me', { headers: { Authorization: 'Bearer ' + getToken() } })
+    .then(r => {
+      if (!r.ok) { localStorage.clear(); return }
+      return r.json()
+    })
+    .then(d => {
+      if (!d) return
+      // Actualizar localStorage con datos frescos del servidor
+      localStorage.setItem(UK, JSON.stringify(d.usuario))
+      localStorage.setItem(MK, JSON.stringify(d.modulos || []))
+      document.getElementById('login').classList.add('hide')
+      iniciar()
+    })
+    .catch(() => { localStorage.clear(); location.reload() })
+}
+
+// ── PWA Service Worker ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
+}
+
+// ── PWA: prompt de instalación (Android) ──
+let deferredPrompt = null
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault()
+  deferredPrompt = e
+  // Mostrar botón de instalar en el header si está disponible
+  const btn = document.createElement('button')
+  btn.id = 'btn-install'
+  btn.title = 'Instalar app'
+  btn.style.cssText = 'background:none;border:1px solid rgba(139,92,246,.4);color:#c084fc;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:4px'
+  btn.textContent = '⬇'
+  btn.onclick = () => {
+    deferredPrompt.prompt()
+    deferredPrompt.userChoice.then(() => { btn.remove(); deferredPrompt = null })
+  }
+  const hdrBtns = document.querySelector('#hdr-right div')
+  if (hdrBtns) hdrBtns.prepend(btn)
+})
+</script>
+</body>
+</html>
