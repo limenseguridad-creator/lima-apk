@@ -27,6 +27,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Configure git
+        run: |
+          git config --global user.email "ci@limenseguridad.com"
+          git config --global user.name "Lima CI"
+
       - name: Inject build number
         run: sed -i "s/__BUILD_NUMBER__/${{ github.run_number }}/g" www/index.html
 
@@ -34,7 +39,7 @@ jobs:
         run: npm install
 
       - name: Add Android platform
-        run: npx cap add android
+        run: npx cap add android || npx cap add android || npx cap add android
 
       - name: Sync web files
         run: npx cap sync android
