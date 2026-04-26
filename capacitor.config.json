@@ -3,7 +3,8 @@
   "appName": "LIMA",
   "webDir": "www",
   "server": {
-    "androidScheme": "https",
+    "url": "http://144.22.35.31:3000",
+    "androidScheme": "http",
     "cleartext": true
   },
   "android": {
