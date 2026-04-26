@@ -27,6 +27,9 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Inject build number
+        run: sed -i "s/__BUILD_NUMBER__/${{ github.run_number }}/g" www/index.html
+
       - name: Install dependencies
         run: npm install
 

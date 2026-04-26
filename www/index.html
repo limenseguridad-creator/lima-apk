@@ -27,7 +27,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 /* ── LOGIN ── */
 #login{position:fixed;inset:0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:24px;background:radial-gradient(ellipse at 50% 30%,#1a0538 0%,var(--bg) 65%)}
 #login.hide{display:none}
-.login-avatar{width:140px;height:140px;position:relative;margin-bottom:16px;border-radius:0}
+.login-avatar{display:none}
 .login-avatar img{width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid rgba(139,92,246,.3)}
 .login-avatar::after{content:'';position:absolute;inset:-8px;border-radius:14px;border:1px solid rgba(139,92,246,.2);animation:spin-s 12s linear infinite;pointer-events:none}
 @keyframes spin-s{to{transform:rotate(360deg)}}
@@ -334,13 +334,30 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 .panic-opt.p-silencioso:active{background:rgba(245,158,11,.2)}
 .panic-opt.p-fuego:active     {background:rgba(249,115,22,.2)}
 .panic-opt.p-ayuda:active     {background:rgba(99,102,241,.2)}
+
+/* ── LOGIN SPHERE ── */
+.login-sphere{position:relative;width:120px;height:120px;margin-bottom:8px;flex-shrink:0}
+.ls-core{position:absolute;inset:10px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#c084fc,#8b5cf6 45%,#5b21b6 80%,#2e1065);box-shadow:0 0 30px rgba(139,92,246,.7),0 0 60px rgba(139,92,246,.3);animation:ls-pulse 3s ease-in-out infinite}
+.ls-ring{position:absolute;border-radius:50%;border:1px solid rgba(139,92,246,.4);animation:ls-spin 8s linear infinite}
+.ls-ring.r1{inset:2px;animation-duration:8s}
+.ls-ring.r2{inset:-4px;border-color:rgba(192,132,252,.25);animation-duration:14s;animation-direction:reverse}
+.ls-glow{position:absolute;inset:-15px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,.15) 0%,transparent 70%);animation:ls-pulse 3s ease-in-out infinite}
+@keyframes ls-pulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.06);opacity:1}}
+@keyframes ls-spin{to{transform:rotate(360deg)}}
+.login-build{font-size:9px;color:rgba(139,92,246,.5);letter-spacing:2px;margin-bottom:20px;text-transform:uppercase}
 </style>
 </head>
 <body>
 
 <!-- LOGIN -->
 <div id="login">
-  <div class="login-avatar"><img src="/img/lima_frente.png" alt="LIMA"/></div>
+  <div class="login-sphere">
+    <div class="ls-core"></div>
+    <div class="ls-ring r1"></div>
+    <div class="ls-ring r2"></div>
+    <div class="ls-glow"></div>
+  </div>
+  <div class="login-build">BUILD #__BUILD_NUMBER__</div>
   <div class="login-title">LIMA</div>
   <div class="login-sub">Asistente IA · LIMEN Seguridad</div>
   <div class="login-card">
@@ -464,7 +481,8 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 // ════════════════════════════════════════════════════
 //  CONFIG
 // ════════════════════════════════════════════════════
-const API = '/comando'
+const API_BASE = 'http://144.22.35.31:3000'
+const API = API_BASE + '/comando'
 const TK  = 'lima_token'
 const UK  = 'lima_user'
 const MK  = 'lima_mods'
@@ -1355,7 +1373,7 @@ async function confirmarCambioPass() {
   if (newPassword.length < 6)            { if(errEl) errEl.textContent = 'Mínimo 6 caracteres'; return }
   if (errEl) errEl.textContent = ''
   try {
-    const r = await fetch('/api/usuario/password', {
+    const r = await fetch(API_BASE + '/api/usuario/password', {
       method: 'PUT',
       headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + (getToken() || '') },
       body: JSON.stringify({ currentPassword, newPassword })
@@ -1490,8 +1508,8 @@ async function abrirModuloAlarma() {
   try {
     const hdr = { Authorization: 'Bearer ' + (getToken() || '') }
     const [r, rb] = await Promise.all([
-      fetch('/api/modulo/alarma', { headers: hdr }),
-      fetch('/api/modulo/alarma/bridge', { headers: hdr })
+      fetch(API_BASE + '/api/modulo/alarma', { headers: hdr }),
+      fetch(API_BASE + '/api/modulo/alarma/bridge', { headers: hdr })
     ])
     const d  = await r.json()
     const br = rb.ok ? await rb.json() : { online: false, panel_estado: 'desconocido' }
@@ -1549,7 +1567,7 @@ async function comandoAlarma(accion) {
   const btns = document.querySelectorAll('#modulo-body .mod-btn')
   btns.forEach(b => { b.disabled = true; b.style.opacity = '0.5' })
   try {
-    const r = await fetch('/api/modulo/alarma/comando', {
+    const r = await fetch(API_BASE + '/api/modulo/alarma/comando', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + (getToken() || '') },
       body: JSON.stringify({ accion })
@@ -1571,7 +1589,7 @@ async function comandoAlarma(accion) {
 async function abrirModuloGPS() {
   _abrirModulo('📍 Mi GPS')
   try {
-    const r = await fetch('/api/modulo/gps', {
+    const r = await fetch(API_BASE + '/api/modulo/gps', {
       headers: { Authorization: 'Bearer ' + (getToken() || '') }
     })
     const d = await r.json()
@@ -1606,7 +1624,7 @@ async function abrirModuloGPS() {
 async function abrirModuloHogar() {
   _abrirModulo('🏠 Mi Hogar')
   try {
-    const r = await fetch('/api/modulo/hogar', {
+    const r = await fetch(API_BASE + '/api/modulo/hogar', {
       headers: { Authorization: 'Bearer ' + (getToken() || '') }
     })
     const d = await r.json()
@@ -1650,7 +1668,7 @@ async function abrirModuloHogar() {
 async function toggleHogar(entityId, btn) {
   btn.disabled = true
   try {
-    const r = await fetch('/api/modulo/hogar/toggle', {
+    const r = await fetch(API_BASE + '/api/modulo/hogar/toggle', {
       method:'POST',
       headers:{ Authorization:'Bearer '+(getToken()||''), 'Content-Type':'application/json' },
       body: JSON.stringify({ entity_id: entityId })
@@ -1733,7 +1751,7 @@ async function confirmarPanico(tipo) {
     } catch {}
   }
   try {
-    const r = await fetch('/api/modulo/panico', {
+    const r = await fetch(API_BASE + '/api/modulo/panico', {
       method:'POST',
       headers:{ Authorization:'Bearer '+(getToken()||''), 'Content-Type':'application/json' },
       body: JSON.stringify({ tipo, lat, lng })
@@ -1984,7 +2002,7 @@ async function iniciarEscucha() {
       fd.append('audio', blob, 'audio.webm')
 
       try {
-        const r = await fetch('/api/transcribir', {
+        const r = await fetch(API_BASE + '/api/transcribir', {
           method: 'POST',
           headers: { Authorization: 'Bearer ' + (getToken() || '') },
           body: fd
@@ -2060,7 +2078,7 @@ async function hacerLogin() {
   if(!email||!pass) { err.textContent='Completá email y contraseña'; return }
   btn.disabled=true; btn.textContent='VERIFICANDO...'
   try {
-    const r = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})})
+    const r = await fetch(API_BASE + '/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})})
     const d = await r.json()
     if(!r.ok) { err.textContent=d.error||'Error de acceso'; return }
     localStorage.setItem(TK, d.token)
@@ -2078,7 +2096,7 @@ function logout() { localStorage.clear(); location.reload() }
 // ════════════════════════════════════════════════════
 async function cargarEstado() {
   try {
-    const r = await fetch('/estado',{headers:{Authorization:'Bearer '+(getToken()||'')}})
+    const r = await fetch(API_BASE + '/estado',{headers:{Authorization:'Bearer '+(getToken()||'')}})
     if(!r.ok) return
     const d = await r.json()
     setEstado(d.armado?'armado':'desarmado', d.armado?'Armado':'Desarmado')
@@ -2136,7 +2154,7 @@ window.addEventListener('resize', initWaveCanvas)
 // Auto-arranque si hay token
 if(getToken()) {
   // Verificar token y refrescar datos del usuario antes de iniciar
-  fetch('/api/me', { headers: { Authorization: 'Bearer ' + getToken() } })
+  fetch(API_BASE + '/api/me', { headers: { Authorization: 'Bearer ' + getToken() } })
     .then(r => {
       if (!r.ok) { localStorage.clear(); return }
       return r.json()
