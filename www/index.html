@@ -244,7 +244,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 #pin-err{font-size:12px;color:var(--red);min-height:16px;letter-spacing:1px}
 
 /* ── MOD PANEL ── */
-#mod-panel{position:fixed;inset:0;z-index:800;background:rgba(13,1,24,.96);backdrop-filter:blur(12px);display:none;flex-direction:column;padding:24px;gap:14px;overflow-y:auto}
+#mod-panel{position:fixed;inset:0;z-index:800;background:rgba(13,1,24,.97);display:none;flex-direction:column;padding:24px;gap:14px;overflow-y:auto}
 #mod-panel.show{display:flex}
 .mod-list{display:flex;flex-direction:column;gap:10px}
 .mod-item{display:flex;align-items:center;gap:14px;padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:12px}
@@ -386,7 +386,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
     <div id="hdr-usuario"></div>
     <div style="display:flex;gap:6px">
       <button id="btn-settings" onclick="mostrarModulos()">⚙</button>
-      <button id="btn-logout" onclick="logout()" title="Salir">⏻</button>
+      <button id="btn-logout" onclick="logout()" title="Salir" style="font-size:15px;font-weight:bold;">✕</button>
     </div>
   </div>
 </div>
@@ -944,7 +944,7 @@ function drawSphere(ts) {
   sCtx.restore()
 
   // ── Anillos orbitales extra ──
-  const nRings = IS_MOBILE ? 3 : 4
+  const nRings = IS_MOBILE ? 2 : 2
   for (let ri = 0; ri < nRings; ri++) {
     const rot = sphere.rotation * (0.6 + ri * 0.35) + ri * Math.PI * 0.4
     sCtx.save()
@@ -1139,7 +1139,6 @@ const MC = 'アイウエオカキクケコサシスセソタチツテトナニ�
 const MRINGS = [
   { rOff:48,  n:42,  spd:.0024, dir: 1,  sz:14, baseA:.90 },
   { rOff:108, n:64,  spd:.0015, dir:-1,  sz:15, baseA:.68 },
-  { rOff:172, n:82,  spd:.0009, dir: 1,  sz:15, baseA:.46 },
 ]
 const ringChars  = MRINGS.map(r => Array.from({length:r.n}, ()=> MC[Math.floor(Math.random()*MC.length)]))
 const ringAngles = [0, Math.PI*.4, Math.PI*.8]
@@ -2089,7 +2088,13 @@ async function hacerLogin() {
   } catch { err.textContent='Error de conexión' }
   finally { btn.disabled=false; btn.textContent='INGRESAR' }
 }
-function logout() { localStorage.clear(); location.reload() }
+function logout() {
+  localStorage.clear()
+  document.getElementById('login').classList.remove('hide')
+  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.exitApp()
+  }
+}
 
 // ════════════════════════════════════════════════════
 //  ESTADO INICIAL
@@ -2107,6 +2112,11 @@ async function cargarEstado() {
 //  INIT
 // ════════════════════════════════════════════════════
 function iniciar() {
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(function(s) { s.getTracks().forEach(function(t) { t.stop() }) })
+      .catch(function() {})
+  }
   const u = getUsuario()
   if(u) document.getElementById('hdr-usuario').textContent = u.nombre||u.email||''
   aplicarModulos()

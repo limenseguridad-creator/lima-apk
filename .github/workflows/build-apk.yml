@@ -44,6 +44,11 @@ jobs:
       - name: Sync web files
         run: npx cap sync android
 
+      - name: Add microphone permission
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          grep -q 'RECORD_AUDIO' $MANIFEST || sed -i 's|<application|<uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <application|' $MANIFEST
+
       - name: Setup Android SDK tools
         run: |
           sudo apt-get update -y
