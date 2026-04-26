@@ -1405,12 +1405,16 @@ function mostrarModulos() {
 const AC = window.AudioContext || window.webkitAudioContext
 let actx
 function beep(f=660,d=.08,v=.18) {
-  if(!actx) actx = new AC()
-  const o=actx.createOscillator(),g=actx.createGain()
-  o.connect(g);g.connect(actx.destination)
-  o.frequency.value=f;g.gain.setValueAtTime(v,actx.currentTime)
-  g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d)
-  o.start();o.stop(actx.currentTime+d)
+  try {
+    if(!actx && AC) actx = new AC()
+    if(!actx) return
+    actx.resume()
+    const o=actx.createOscillator(),g=actx.createGain()
+    o.connect(g);g.connect(actx.destination)
+    o.frequency.value=f;g.gain.setValueAtTime(v,actx.currentTime)
+    g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d)
+    o.start();o.stop(actx.currentTime+d)
+  } catch(e) {}
 }
 function beepOk()    { beep(660,.07);setTimeout(()=>beep(880,.09),100) }
 function beepErr()   { beep(220,.25,.3) }
@@ -1468,6 +1472,8 @@ function handleRespuesta(data) {
 async function enviar() {
   const texto = inp.value.trim()
   if (!texto || bloqueado) return
+  // Pre-inicializar AudioContext en contexto de gesto del usuario (antes del await)
+  if (!actx && AC) { try { actx = new AC(); actx.resume() } catch(e) {} }
   addMsg(texto, 'user')
   inp.value = ''; inp.style.height = 'auto'
   setTyping(true); btnSend.disabled = true
@@ -1481,7 +1487,7 @@ async function enviar() {
     })
     const d = await r.json()
     if (r.status === 401) { logout(); return }
-    handleRespuesta(d)
+    try { handleRespuesta(d) } catch(e) { console.error('[LIMA] handleRespuesta:', e); setTyping(false); btnSend.disabled=false }
   } catch {
     setTyping(false); btnSend.disabled=false; setAvatarState('idle')
     addMsg('Error de conexión con LIMA.','lima','error'); beepErr()
@@ -1802,6 +1808,7 @@ function hablarRespuesta(texto) {
     if (vozContinua) setTimeout(iniciarEscucha, 600)
     return
   }
+  if (!window.speechSynthesis) { setAvatarState('idle'); return }
   window.speechSynthesis.cancel()
   const utter = new SpeechSynthesisUtterance(texto)
   utter.lang  = 'es-AR'
