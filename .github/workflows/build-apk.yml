@@ -62,22 +62,8 @@ jobs:
           done
           # Reemplazar foreground del adaptive icon (el que muestra las "TT")
           convert assets/icon.png -resize 108x108 $RES/mipmap-anydpi-v26/ic_launcher_foreground.png 2>/dev/null || true
-          # Reemplazar el XML del adaptive icon para que use PNG directamente
-          for xml in $RES/mipmap-anydpi-v26/ic_launcher.xml $RES/mipmap-anydpi-v26/ic_launcher_round.xml; do
-            [ -f "$xml" ] && cat > "$xml" << 'ICONEOF'
-<?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background"/>
-    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
-</adaptive-icon>
-ICONEOF
-          done
-          # Generar foreground en todos los densities para adaptive icon
-          for entry in "48 mipmap-mdpi" "72 mipmap-hdpi" "96 mipmap-xhdpi" "144 mipmap-xxhdpi" "192 mipmap-xxxhdpi"; do
-            SIZE=$(echo $entry | cut -d' ' -f1)
-            DIR=$(echo $entry | cut -d' ' -f2)
-            convert assets/icon.png -resize ${SIZE}x${SIZE} $RES/$DIR/ic_launcher_foreground.png 2>/dev/null || true
-          done
+          # Eliminar adaptive icons (mipmap-anydpi-v26) para que Android use los PNG normales
+          rm -rf $RES/mipmap-anydpi-v26
 
       - name: Setup Android SDK tools
         run: |
