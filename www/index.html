@@ -85,9 +85,9 @@ body.st-desarmado #avatar-glow{background:radial-gradient(ellipse at 50% 30%,rgb
 #hdr-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
 #hdr-hora{font-size:13px;color:var(--text);font-variant-numeric:tabular-nums}
 #hdr-usuario{font-size:9px;color:var(--p)}
-#btn-settings{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:4px}
+#btn-settings{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;width:44px;height:44px;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;margin-top:4px}
 #btn-settings:active{background:var(--glassB)}
-#btn-logout{background:none;border:1px solid rgba(239,68,68,.3);color:rgba(239,68,68,.7);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:4px}
+#btn-logout{background:none;border:1px solid rgba(239,68,68,.3);color:rgba(239,68,68,.7);border-radius:8px;width:44px;height:44px;cursor:pointer;font-size:20px;font-weight:bold;display:flex;align-items:center;justify-content:center;margin-top:4px}
 #btn-logout:active{background:rgba(239,68,68,.15);color:var(--red)}
 
 body.st-armado    #estado-dot{background:var(--red);box-shadow:0 0 8px var(--red)}
@@ -534,9 +534,11 @@ const sphere = {
   colors: {
     idle:       { r:160, g:32,  b:255 },  // violeta eléctrico Limen
     listening:  { r:80,  g:140, b:255 },  // azul eléctrico
-    speaking:   { r:200, g:60,  b:255 },  // magenta/violeta
+    speaking:   { r:220, g:40,  b:255 },  // violeta neon brillante
     processing: { r:0,   g:180, b:255 },  // cian brillante
     correcto:   { r:0,   g:230, b:120 },  // verde neón
+    desarmado:  { r:0,   g:230, b:120 },  // verde (igual que correcto)
+    hogar:      { r:245, g:158, b:11  },  // ámbar domótica
     error:      { r:255, g:50,  b:80  },  // rojo neón
   },
   cur:    { r:160, g:32, b:255 },
@@ -544,7 +546,7 @@ const sphere = {
   radius: 0,
   targetRadius: 0,
   pulse: 0,
-  pulseSpeed: 0.018,
+  pulseSpeed: 0.022,
   rotation: 0,
   energy: 0,
   targetEnergy: 0,
@@ -679,7 +681,7 @@ function drawSphere(ts) {
 
   // Pulse
   sphere.pulse += sphere.pulseSpeed
-  const pulseMult = 1 + Math.sin(sphere.pulse) * (0.04 + sphere.energy * 0.12)
+  const pulseMult = 1 + Math.sin(sphere.pulse) * (0.07 + sphere.energy * 0.15)
   sphere.rotation += 0.003 + sphere.energy * 0.008
 
   const baseR = sphere.radius * pulseMult
@@ -776,24 +778,6 @@ function drawSphere(ts) {
     })
     sCtx.restore()
   })()
-
-  // ── Anillos orbitales neon ──
-  sCtx.save()
-  sCtx.beginPath()
-  sCtx.ellipse(cx, cy, baseR * 1.08, baseR * 0.18, sphere.rotation * 0.3, 0, Math.PI * 2)
-  sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.7 + sphere.energy * 0.3})`
-  sCtx.lineWidth   = 1.5
-  sCtx.stroke()
-
-  sCtx.save()
-  sCtx.translate(cx, cy)
-  sCtx.rotate(sphere.rotation * 0.5 + Math.PI * 0.25)
-  sCtx.beginPath()
-  sCtx.ellipse(0, 0, baseR * 1.12, baseR * 0.2, Math.PI * 0.35, 0, Math.PI * 2)
-  sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.55 + sphere.energy * 0.3})`
-  sCtx.lineWidth   = 1.2
-  sCtx.stroke()
-  sCtx.restore()
 
   sCtx.restore()
 
@@ -944,7 +928,7 @@ function drawSphere(ts) {
   sCtx.restore()
 
   // ── Anillos orbitales extra ──
-  const nRings = IS_MOBILE ? 2 : 2
+  const nRings = 0
   for (let ri = 0; ri < nRings; ri++) {
     const rot = sphere.rotation * (0.6 + ri * 0.35) + ri * Math.PI * 0.4
     sCtx.save()
@@ -1069,6 +1053,7 @@ function setAvatarState(state) {
     speaking:   'Respondiendo...',
     processing: 'Procesando...',
     correcto:   'Código correcto',
+    desarmado:  'Desarmado',
     error:      'Error',
   }
   if (limaLbl) limaLbl.textContent = labels[state] || ''
@@ -1093,6 +1078,7 @@ function setAvatarState(state) {
       setWaveState('listening')
       break
     case 'correcto':
+    case 'desarmado':
     case 'error':
       setTimeout(() => setAvatarState('idle'), 3000)
       break
@@ -1404,6 +1390,17 @@ function mostrarModulos() {
 // ════════════════════════════════════════════════════
 const AC = window.AudioContext || window.webkitAudioContext
 let actx
+// Inicializar AudioContext en el primer toque (requerido por Android)
+document.addEventListener('touchstart', function initAudioCtx() {
+  if (AC) {
+    try {
+      if (!actx) actx = new AC()
+      if (actx.state === 'suspended') actx.resume()
+    } catch(e) {}
+  }
+  document.removeEventListener('touchstart', initAudioCtx)
+}, { once: true, passive: true })
+
 function beep(f=660,d=.08,v=.18) {
   try {
     if(!actx && AC) actx = new AC()
@@ -1448,9 +1445,11 @@ function handleRespuesta(data) {
   switch(intent) {
     case 'activar':
       setEstado('armado','Armado'); beepAlarm()
+      setAvatarState('error')
       break
     case 'desactivar':
       setEstado('desarmado','Desarmado'); beepOk()
+      setAvatarState('correcto')
       break
     case 'panico':
       setEstado('panico','PÁNICO'); beepPanic()
