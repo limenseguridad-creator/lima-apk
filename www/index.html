@@ -85,9 +85,9 @@ body.st-desarmado #avatar-glow{background:radial-gradient(ellipse at 50% 30%,rgb
 #hdr-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
 #hdr-hora{font-size:13px;color:var(--text);font-variant-numeric:tabular-nums}
 #hdr-usuario{font-size:9px;color:var(--p)}
-#btn-settings{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;width:44px;height:44px;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;margin-top:4px}
+#btn-settings{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;width:44px;height:44px;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;margin-top:4px;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 #btn-settings:active{background:var(--glassB)}
-#btn-logout{background:none;border:1px solid rgba(239,68,68,.3);color:rgba(239,68,68,.7);border-radius:8px;width:44px;height:44px;cursor:pointer;font-size:20px;font-weight:bold;display:flex;align-items:center;justify-content:center;margin-top:4px}
+#btn-logout{background:none;border:1px solid rgba(239,68,68,.3);color:rgba(239,68,68,.7);border-radius:8px;width:44px;height:44px;cursor:pointer;font-size:20px;font-weight:bold;display:flex;align-items:center;justify-content:center;margin-top:4px;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 #btn-logout:active{background:rgba(239,68,68,.15);color:var(--red)}
 
 body.st-armado    #estado-dot{background:var(--red);box-shadow:0 0 8px var(--red)}
@@ -419,7 +419,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 </div>
 
 <!-- ESTADO LABEL -->
-<div id="lima-state-lbl">En espera</div>
+<div id="lima-state-lbl"></div>
 
 <!-- CHAT PANEL (fijo abajo) -->
 <div id="chat-panel">
@@ -1048,7 +1048,7 @@ function setAvatarState(state) {
   setSphereState(state)
 
   const labels = {
-    idle:       'En espera',
+    idle:       '',  // oculto cuando idle
     listening:  'Escuchando...',
     speaking:   'Respondiendo...',
     processing: 'Procesando...',
@@ -1827,12 +1827,18 @@ function hablarRespuesta(texto) {
       voiceWave._t = setTimeout(() => { voiceWave.target = 8 + Math.random() * 8 }, 120)
     }
   }
+  let ttsTimer = setTimeout(() => {
+    window.speechSynthesis.cancel()
+    setAvatarState('idle'); setWaveState('idle')
+  }, 12000)
   utter.onend = () => {
+    clearTimeout(ttsTimer)
     setAvatarState('idle')
     setWaveState('idle')
     if (vozContinua) setTimeout(iniciarEscucha, 1800)
   }
   utter.onerror = () => {
+    clearTimeout(ttsTimer)
     setAvatarState('idle')
     setWaveState('idle')
   }
@@ -1845,7 +1851,7 @@ function hablarRespuesta(texto) {
 let mediaRecorder  = null
 let audioChunks    = []
 let grabando       = false
-let ttsEnabled     = true       // TTS ON por defecto
+let ttsEnabled     = false      // TTS OFF — no funciona en Android WebView
 let vozContinua    = false      // OFF por defecto — usuario activa cuando quiere
 let silenceTimer   = null
 let audioCtx       = null
@@ -2095,10 +2101,12 @@ async function hacerLogin() {
   finally { btn.disabled=false; btn.textContent='INGRESAR' }
 }
 function logout() {
+  try { if (window.speechSynthesis) window.speechSynthesis.cancel() } catch(e) {}
   localStorage.clear()
-  document.getElementById('login').classList.remove('hide')
+  const loginEl = document.getElementById('login')
+  if (loginEl) { loginEl.classList.remove('hide'); loginEl.style.display = 'flex' }
   if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-    window.Capacitor.Plugins.App.exitApp()
+    setTimeout(() => window.Capacitor.Plugins.App.exitApp(), 100)
   }
 }
 
