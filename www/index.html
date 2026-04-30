@@ -27,7 +27,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 /* ── LOGIN ── */
 #login{position:fixed;inset:0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:24px;background:radial-gradient(ellipse at 50% 30%,#1a0538 0%,var(--bg) 65%)}
 #login.hide{display:none}
-.login-avatar{display:none}
+.login-avatar{width:140px;height:140px;position:relative;margin-bottom:16px;border-radius:0}
 .login-avatar img{width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid rgba(139,92,246,.3)}
 .login-avatar::after{content:'';position:absolute;inset:-8px;border-radius:14px;border:1px solid rgba(139,92,246,.2);animation:spin-s 12s linear infinite;pointer-events:none}
 @keyframes spin-s{to{transform:rotate(360deg)}}
@@ -244,7 +244,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 #pin-err{font-size:12px;color:var(--red);min-height:16px;letter-spacing:1px}
 
 /* ── MOD PANEL ── */
-#mod-panel{position:fixed;inset:0;z-index:800;background:rgba(13,1,24,.97);display:none;flex-direction:column;padding:24px;gap:14px;overflow-y:auto}
+#mod-panel{position:fixed;inset:0;z-index:800;background:rgba(13,1,24,.96);backdrop-filter:blur(12px);display:none;flex-direction:column;padding:24px;gap:14px;overflow-y:auto}
 #mod-panel.show{display:flex}
 .mod-list{display:flex;flex-direction:column;gap:10px}
 .mod-item{display:flex;align-items:center;gap:14px;padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:12px}
@@ -335,7 +335,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 .panic-opt.p-fuego:active     {background:rgba(249,115,22,.2)}
 .panic-opt.p-ayuda:active     {background:rgba(99,102,241,.2)}
 
-/* ── LOGIN SPHERE ── */
+/* -- LOGIN SPHERE -- */
 .login-sphere{position:relative;width:120px;height:120px;margin-bottom:8px;flex-shrink:0}
 .ls-core{position:absolute;inset:10px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#c084fc,#8b5cf6 45%,#5b21b6 80%,#2e1065);box-shadow:0 0 30px rgba(139,92,246,.7),0 0 60px rgba(139,92,246,.3);animation:ls-pulse 3s ease-in-out infinite}
 .ls-ring{position:absolute;border-radius:50%;border:1px solid rgba(139,92,246,.4);animation:ls-spin 8s linear infinite}
@@ -345,6 +345,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 @keyframes ls-pulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.06);opacity:1}}
 @keyframes ls-spin{to{transform:rotate(360deg)}}
 .login-build{font-size:9px;color:rgba(139,92,246,.5);letter-spacing:2px;margin-bottom:20px;text-transform:uppercase}
+.login-avatar{display:none}
 </style>
 </head>
 <body>
@@ -386,7 +387,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
     <div id="hdr-usuario"></div>
     <div style="display:flex;gap:6px">
       <button id="btn-settings" onclick="mostrarModulos()">⚙</button>
-      <button id="btn-logout" onclick="logout()" title="Salir" style="font-size:15px;font-weight:bold;">✕</button>
+      <button id="btn-logout" onclick="logout()" title="Salir">⏻</button>
     </div>
   </div>
 </div>
@@ -419,7 +420,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 </div>
 
 <!-- ESTADO LABEL -->
-<div id="lima-state-lbl"></div>
+<div id="lima-state-lbl">En espera</div>
 
 <!-- CHAT PANEL (fijo abajo) -->
 <div id="chat-panel">
@@ -534,11 +535,9 @@ const sphere = {
   colors: {
     idle:       { r:160, g:32,  b:255 },  // violeta eléctrico Limen
     listening:  { r:80,  g:140, b:255 },  // azul eléctrico
-    speaking:   { r:220, g:40,  b:255 },  // violeta neon brillante
+    speaking:   { r:200, g:60,  b:255 },  // magenta/violeta
     processing: { r:0,   g:180, b:255 },  // cian brillante
     correcto:   { r:0,   g:230, b:120 },  // verde neón
-    desarmado:  { r:0,   g:230, b:120 },  // verde (igual que correcto)
-    hogar:      { r:245, g:158, b:11  },  // ámbar domótica
     error:      { r:255, g:50,  b:80  },  // rojo neón
   },
   cur:    { r:160, g:32, b:255 },
@@ -546,7 +545,7 @@ const sphere = {
   radius: 0,
   targetRadius: 0,
   pulse: 0,
-  pulseSpeed: 0.022,
+  pulseSpeed: 0.018,
   rotation: 0,
   energy: 0,
   targetEnergy: 0,
@@ -681,7 +680,7 @@ function drawSphere(ts) {
 
   // Pulse
   sphere.pulse += sphere.pulseSpeed
-  const pulseMult = 1 + Math.sin(sphere.pulse) * (0.07 + sphere.energy * 0.15)
+  const pulseMult = 1 + Math.sin(sphere.pulse) * (0.04 + sphere.energy * 0.12)
   sphere.rotation += 0.003 + sphere.energy * 0.008
 
   const baseR = sphere.radius * pulseMult
@@ -778,6 +777,24 @@ function drawSphere(ts) {
     })
     sCtx.restore()
   })()
+
+  // ── Anillos orbitales neon ──
+  sCtx.save()
+  sCtx.beginPath()
+  sCtx.ellipse(cx, cy, baseR * 1.08, baseR * 0.18, sphere.rotation * 0.3, 0, Math.PI * 2)
+  sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.7 + sphere.energy * 0.3})`
+  sCtx.lineWidth   = 1.5
+  sCtx.stroke()
+
+  sCtx.save()
+  sCtx.translate(cx, cy)
+  sCtx.rotate(sphere.rotation * 0.5 + Math.PI * 0.25)
+  sCtx.beginPath()
+  sCtx.ellipse(0, 0, baseR * 1.12, baseR * 0.2, Math.PI * 0.35, 0, Math.PI * 2)
+  sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.55 + sphere.energy * 0.3})`
+  sCtx.lineWidth   = 1.2
+  sCtx.stroke()
+  sCtx.restore()
 
   sCtx.restore()
 
@@ -928,7 +945,7 @@ function drawSphere(ts) {
   sCtx.restore()
 
   // ── Anillos orbitales extra ──
-  const nRings = 0
+  const nRings = IS_MOBILE ? 3 : 4
   for (let ri = 0; ri < nRings; ri++) {
     const rot = sphere.rotation * (0.6 + ri * 0.35) + ri * Math.PI * 0.4
     sCtx.save()
@@ -1048,12 +1065,11 @@ function setAvatarState(state) {
   setSphereState(state)
 
   const labels = {
-    idle:       '',  // oculto cuando idle
+    idle:       'En espera',
     listening:  'Escuchando...',
     speaking:   'Respondiendo...',
     processing: 'Procesando...',
     correcto:   'Código correcto',
-    desarmado:  'Desarmado',
     error:      'Error',
   }
   if (limaLbl) limaLbl.textContent = labels[state] || ''
@@ -1078,7 +1094,6 @@ function setAvatarState(state) {
       setWaveState('listening')
       break
     case 'correcto':
-    case 'desarmado':
     case 'error':
       setTimeout(() => setAvatarState('idle'), 3000)
       break
@@ -1125,6 +1140,7 @@ const MC = 'アイウエオカキクケコサシスセソタチツテトナニ�
 const MRINGS = [
   { rOff:48,  n:42,  spd:.0024, dir: 1,  sz:14, baseA:.90 },
   { rOff:108, n:64,  spd:.0015, dir:-1,  sz:15, baseA:.68 },
+  { rOff:172, n:82,  spd:.0009, dir: 1,  sz:15, baseA:.46 },
 ]
 const ringChars  = MRINGS.map(r => Array.from({length:r.n}, ()=> MC[Math.floor(Math.random()*MC.length)]))
 const ringAngles = [0, Math.PI*.4, Math.PI*.8]
@@ -1358,7 +1374,7 @@ async function confirmarCambioPass() {
   if (newPassword.length < 6)            { if(errEl) errEl.textContent = 'Mínimo 6 caracteres'; return }
   if (errEl) errEl.textContent = ''
   try {
-    const r = await fetch(API_BASE + '/api/usuario/password', {
+    const r = await fetch('/api/usuario/password', {
       method: 'PUT',
       headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + (getToken() || '') },
       body: JSON.stringify({ currentPassword, newPassword })
@@ -1390,28 +1406,13 @@ function mostrarModulos() {
 // ════════════════════════════════════════════════════
 const AC = window.AudioContext || window.webkitAudioContext
 let actx
-// Inicializar AudioContext en el primer toque (requerido por Android)
-document.addEventListener('touchstart', function initAudioCtx() {
-  if (AC) {
-    try {
-      if (!actx) actx = new AC()
-      if (actx.state === 'suspended') actx.resume()
-    } catch(e) {}
-  }
-  document.removeEventListener('touchstart', initAudioCtx)
-}, { once: true, passive: true })
-
 function beep(f=660,d=.08,v=.18) {
-  try {
-    if(!actx && AC) actx = new AC()
-    if(!actx) return
-    actx.resume()
-    const o=actx.createOscillator(),g=actx.createGain()
-    o.connect(g);g.connect(actx.destination)
-    o.frequency.value=f;g.gain.setValueAtTime(v,actx.currentTime)
-    g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d)
-    o.start();o.stop(actx.currentTime+d)
-  } catch(e) {}
+  if(!actx) actx = new AC()
+  const o=actx.createOscillator(),g=actx.createGain()
+  o.connect(g);g.connect(actx.destination)
+  o.frequency.value=f;g.gain.setValueAtTime(v,actx.currentTime)
+  g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d)
+  o.start();o.stop(actx.currentTime+d)
 }
 function beepOk()    { beep(660,.07);setTimeout(()=>beep(880,.09),100) }
 function beepErr()   { beep(220,.25,.3) }
@@ -1445,11 +1446,9 @@ function handleRespuesta(data) {
   switch(intent) {
     case 'activar':
       setEstado('armado','Armado'); beepAlarm()
-      setAvatarState('error')
       break
     case 'desactivar':
       setEstado('desarmado','Desarmado'); beepOk()
-      setAvatarState('correcto')
       break
     case 'panico':
       setEstado('panico','PÁNICO'); beepPanic()
@@ -1471,8 +1470,6 @@ function handleRespuesta(data) {
 async function enviar() {
   const texto = inp.value.trim()
   if (!texto || bloqueado) return
-  // Pre-inicializar AudioContext en contexto de gesto del usuario (antes del await)
-  if (!actx && AC) { try { actx = new AC(); actx.resume() } catch(e) {} }
   addMsg(texto, 'user')
   inp.value = ''; inp.style.height = 'auto'
   setTyping(true); btnSend.disabled = true
@@ -1486,7 +1483,7 @@ async function enviar() {
     })
     const d = await r.json()
     if (r.status === 401) { logout(); return }
-    try { handleRespuesta(d) } catch(e) { console.error('[LIMA] handleRespuesta:', e); setTyping(false); btnSend.disabled=false }
+    handleRespuesta(d)
   } catch {
     setTyping(false); btnSend.disabled=false; setAvatarState('idle')
     addMsg('Error de conexión con LIMA.','lima','error'); beepErr()
@@ -1512,8 +1509,8 @@ async function abrirModuloAlarma() {
   try {
     const hdr = { Authorization: 'Bearer ' + (getToken() || '') }
     const [r, rb] = await Promise.all([
-      fetch(API_BASE + '/api/modulo/alarma', { headers: hdr }),
-      fetch(API_BASE + '/api/modulo/alarma/bridge', { headers: hdr })
+      fetch('/api/modulo/alarma', { headers: hdr }),
+      fetch('/api/modulo/alarma/bridge', { headers: hdr })
     ])
     const d  = await r.json()
     const br = rb.ok ? await rb.json() : { online: false, panel_estado: 'desconocido' }
@@ -1571,7 +1568,7 @@ async function comandoAlarma(accion) {
   const btns = document.querySelectorAll('#modulo-body .mod-btn')
   btns.forEach(b => { b.disabled = true; b.style.opacity = '0.5' })
   try {
-    const r = await fetch(API_BASE + '/api/modulo/alarma/comando', {
+    const r = await fetch('/api/modulo/alarma/comando', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + (getToken() || '') },
       body: JSON.stringify({ accion })
@@ -1593,7 +1590,7 @@ async function comandoAlarma(accion) {
 async function abrirModuloGPS() {
   _abrirModulo('📍 Mi GPS')
   try {
-    const r = await fetch(API_BASE + '/api/modulo/gps', {
+    const r = await fetch('/api/modulo/gps', {
       headers: { Authorization: 'Bearer ' + (getToken() || '') }
     })
     const d = await r.json()
@@ -1628,7 +1625,7 @@ async function abrirModuloGPS() {
 async function abrirModuloHogar() {
   _abrirModulo('🏠 Mi Hogar')
   try {
-    const r = await fetch(API_BASE + '/api/modulo/hogar', {
+    const r = await fetch('/api/modulo/hogar', {
       headers: { Authorization: 'Bearer ' + (getToken() || '') }
     })
     const d = await r.json()
@@ -1672,7 +1669,7 @@ async function abrirModuloHogar() {
 async function toggleHogar(entityId, btn) {
   btn.disabled = true
   try {
-    const r = await fetch(API_BASE + '/api/modulo/hogar/toggle', {
+    const r = await fetch('/api/modulo/hogar/toggle', {
       method:'POST',
       headers:{ Authorization:'Bearer '+(getToken()||''), 'Content-Type':'application/json' },
       body: JSON.stringify({ entity_id: entityId })
@@ -1755,7 +1752,7 @@ async function confirmarPanico(tipo) {
     } catch {}
   }
   try {
-    const r = await fetch(API_BASE + '/api/modulo/panico', {
+    const r = await fetch('/api/modulo/panico', {
       method:'POST',
       headers:{ Authorization:'Bearer '+(getToken()||''), 'Content-Type':'application/json' },
       body: JSON.stringify({ tipo, lat, lng })
@@ -1807,46 +1804,35 @@ function hablarRespuesta(texto) {
     if (vozContinua) setTimeout(iniciarEscucha, 600)
     return
   }
-  setAvatarState('speaking')
-  setWaveState('speaking')
-  const token = getToken() || ''
-  fetch(API_BASE + '/api/tts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-    body: JSON.stringify({ texto })
-  })
-  .then(r => {
-    if (!r.ok) throw new Error('tts ' + r.status)
-    return r.blob()
-  })
-  .then(blob => {
-    const url = URL.createObjectURL(blob)
-    const audio = new Audio(url)
-    // Animar wave con timeupdate
-    audio.addEventListener('timeupdate', () => {
-      voiceWave.target = 12 + Math.random() * 20
+  window.speechSynthesis.cancel()
+  const utter = new SpeechSynthesisUtterance(texto)
+  utter.lang  = 'es-AR'
+  utter.rate  = 1.05
+  utter.pitch = 1.0
+  utter.onstart = () => {
+    setAvatarState('speaking')
+    setWaveState('speaking')
+  }
+  utter.onboundary = (e) => {
+    if (e.name === 'word') {
+      // Pulso de amplitud por cada palabra
+      voiceWave.target = 18 + Math.random() * 16
       voiceWave.freq   = 2.5 + Math.random() * 3
-    })
-    audio.addEventListener('ended', () => {
-      URL.revokeObjectURL(url)
-      setAvatarState('idle')
-      setWaveState('idle')
-      if (vozContinua) setTimeout(iniciarEscucha, 1800)
-    })
-    audio.addEventListener('error', () => {
-      URL.revokeObjectURL(url)
-      setAvatarState('idle')
-      setWaveState('idle')
-    })
-    audio.play().catch(() => {
-      setAvatarState('idle')
-      setWaveState('idle')
-    })
-  })
-  .catch(() => {
+      // Decae suavemente hasta el próximo pulso
+      clearTimeout(voiceWave._t)
+      voiceWave._t = setTimeout(() => { voiceWave.target = 8 + Math.random() * 8 }, 120)
+    }
+  }
+  utter.onend = () => {
     setAvatarState('idle')
     setWaveState('idle')
-  })
+    if (vozContinua) setTimeout(iniciarEscucha, 1800)
+  }
+  utter.onerror = () => {
+    setAvatarState('idle')
+    setWaveState('idle')
+  }
+  window.speechSynthesis.speak(utter)
 }
 
 // ════════════════════════════════════════════════════
@@ -1855,7 +1841,7 @@ function hablarRespuesta(texto) {
 let mediaRecorder  = null
 let audioChunks    = []
 let grabando       = false
-let ttsEnabled     = true       // TTS ON — usando edge-tts en servidor
+let ttsEnabled     = true       // TTS ON por defecto
 let vozContinua    = false      // OFF por defecto — usuario activa cuando quiere
 let silenceTimer   = null
 let audioCtx       = null
@@ -2017,7 +2003,7 @@ async function iniciarEscucha() {
       fd.append('audio', blob, 'audio.webm')
 
       try {
-        const r = await fetch(API_BASE + '/api/transcribir', {
+        const r = await fetch('/api/transcribir', {
           method: 'POST',
           headers: { Authorization: 'Bearer ' + (getToken() || '') },
           body: fd
@@ -2093,7 +2079,7 @@ async function hacerLogin() {
   if(!email||!pass) { err.textContent='Completá email y contraseña'; return }
   btn.disabled=true; btn.textContent='VERIFICANDO...'
   try {
-    const r = await fetch(API_BASE + '/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})})
+    const r = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})})
     const d = await r.json()
     if(!r.ok) { err.textContent=d.error||'Error de acceso'; return }
     localStorage.setItem(TK, d.token)
@@ -2104,22 +2090,14 @@ async function hacerLogin() {
   } catch { err.textContent='Error de conexión' }
   finally { btn.disabled=false; btn.textContent='INGRESAR' }
 }
-function logout() {
-  try { if (window.speechSynthesis) window.speechSynthesis.cancel() } catch(e) {}
-  localStorage.clear()
-  const loginEl = document.getElementById('login')
-  if (loginEl) { loginEl.classList.remove('hide'); loginEl.style.display = 'flex' }
-  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-    setTimeout(() => window.Capacitor.Plugins.App.exitApp(), 100)
-  }
-}
+function logout() { localStorage.clear(); location.reload() }
 
 // ════════════════════════════════════════════════════
 //  ESTADO INICIAL
 // ════════════════════════════════════════════════════
 async function cargarEstado() {
   try {
-    const r = await fetch(API_BASE + '/estado',{headers:{Authorization:'Bearer '+(getToken()||'')}})
+    const r = await fetch('/estado',{headers:{Authorization:'Bearer '+(getToken()||'')}})
     if(!r.ok) return
     const d = await r.json()
     setEstado(d.armado?'armado':'desarmado', d.armado?'Armado':'Desarmado')
@@ -2130,11 +2108,6 @@ async function cargarEstado() {
 //  INIT
 // ════════════════════════════════════════════════════
 function iniciar() {
-  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(function(s) { s.getTracks().forEach(function(t) { t.stop() }) })
-      .catch(function() {})
-  }
   const u = getUsuario()
   if(u) document.getElementById('hdr-usuario').textContent = u.nombre||u.email||''
   aplicarModulos()
@@ -2155,7 +2128,15 @@ function iniciar() {
     addMsg(`Hola${nombre?' '+nombre:''}, soy LIMA. ¿En qué puedo ayudarte?`, 'lima', 'bienvenida')
     // Saludo inicial: hablar sin activar escucha automática al terminar
     if (ttsEnabled) {
-      hablarRespuesta(`Hola${nombre?' '+nombre:''}, soy LIMA. ¿En qué puedo ayudarte?`)
+      window.speechSynthesis.cancel()
+      const utter = new SpeechSynthesisUtterance(`Hola${nombre?' '+nombre:''}, soy LIMA. ¿En qué puedo ayudarte?`)
+      utter.lang = 'es-AR'; utter.rate = 1.05
+      utter.onstart = () => { setAvatarState('speaking'); setWaveState('speaking') }
+      utter.onend = () => {
+        setAvatarState('idle'); setWaveState('idle')
+        if (vozContinua) setTimeout(iniciarEscucha, 2500)  // pausa extra en saludo
+      }
+      window.speechSynthesis.speak(utter)
     } else if (vozContinua) {
       setTimeout(iniciarEscucha, 1200)
     }
@@ -2174,7 +2155,7 @@ window.addEventListener('resize', initWaveCanvas)
 // Auto-arranque si hay token
 if(getToken()) {
   // Verificar token y refrescar datos del usuario antes de iniciar
-  fetch(API_BASE + '/api/me', { headers: { Authorization: 'Bearer ' + getToken() } })
+  fetch('/api/me', { headers: { Authorization: 'Bearer ' + getToken() } })
     .then(r => {
       if (!r.ok) { localStorage.clear(); return }
       return r.json()
