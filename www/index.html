@@ -1374,7 +1374,7 @@ async function confirmarCambioPass() {
   if (newPassword.length < 6)            { if(errEl) errEl.textContent = 'Mínimo 6 caracteres'; return }
   if (errEl) errEl.textContent = ''
   try {
-    const r = await fetch('/api/usuario/password', {
+    const r = await fetch(API_BASE + '/api/usuario/password', {
       method: 'PUT',
       headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + (getToken() || '') },
       body: JSON.stringify({ currentPassword, newPassword })
@@ -1509,8 +1509,8 @@ async function abrirModuloAlarma() {
   try {
     const hdr = { Authorization: 'Bearer ' + (getToken() || '') }
     const [r, rb] = await Promise.all([
-      fetch('/api/modulo/alarma', { headers: hdr }),
-      fetch('/api/modulo/alarma/bridge', { headers: hdr })
+      fetch(API_BASE + '/api/modulo/alarma', { headers: hdr }),
+      fetch(API_BASE + '/api/modulo/alarma/bridge', { headers: hdr })
     ])
     const d  = await r.json()
     const br = rb.ok ? await rb.json() : { online: false, panel_estado: 'desconocido' }
@@ -1568,7 +1568,7 @@ async function comandoAlarma(accion) {
   const btns = document.querySelectorAll('#modulo-body .mod-btn')
   btns.forEach(b => { b.disabled = true; b.style.opacity = '0.5' })
   try {
-    const r = await fetch('/api/modulo/alarma/comando', {
+    const r = await fetch(API_BASE + '/api/modulo/alarma/comando', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + (getToken() || '') },
       body: JSON.stringify({ accion })
@@ -1590,7 +1590,7 @@ async function comandoAlarma(accion) {
 async function abrirModuloGPS() {
   _abrirModulo('📍 Mi GPS')
   try {
-    const r = await fetch('/api/modulo/gps', {
+    const r = await fetch(API_BASE + '/api/modulo/gps', {
       headers: { Authorization: 'Bearer ' + (getToken() || '') }
     })
     const d = await r.json()
@@ -1625,7 +1625,7 @@ async function abrirModuloGPS() {
 async function abrirModuloHogar() {
   _abrirModulo('🏠 Mi Hogar')
   try {
-    const r = await fetch('/api/modulo/hogar', {
+    const r = await fetch(API_BASE + '/api/modulo/hogar', {
       headers: { Authorization: 'Bearer ' + (getToken() || '') }
     })
     const d = await r.json()
@@ -1669,7 +1669,7 @@ async function abrirModuloHogar() {
 async function toggleHogar(entityId, btn) {
   btn.disabled = true
   try {
-    const r = await fetch('/api/modulo/hogar/toggle', {
+    const r = await fetch(API_BASE + '/api/modulo/hogar/toggle', {
       method:'POST',
       headers:{ Authorization:'Bearer '+(getToken()||''), 'Content-Type':'application/json' },
       body: JSON.stringify({ entity_id: entityId })
@@ -1752,7 +1752,7 @@ async function confirmarPanico(tipo) {
     } catch {}
   }
   try {
-    const r = await fetch('/api/modulo/panico', {
+    const r = await fetch(API_BASE + '/api/modulo/panico', {
       method:'POST',
       headers:{ Authorization:'Bearer '+(getToken()||''), 'Content-Type':'application/json' },
       body: JSON.stringify({ tipo, lat, lng })
@@ -2003,7 +2003,7 @@ async function iniciarEscucha() {
       fd.append('audio', blob, 'audio.webm')
 
       try {
-        const r = await fetch('/api/transcribir', {
+        const r = await fetch(API_BASE + '/api/transcribir', {
           method: 'POST',
           headers: { Authorization: 'Bearer ' + (getToken() || '') },
           body: fd
@@ -2079,7 +2079,7 @@ async function hacerLogin() {
   if(!email||!pass) { err.textContent='Completá email y contraseña'; return }
   btn.disabled=true; btn.textContent='VERIFICANDO...'
   try {
-    const r = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})})
+    const r = await fetch(API_BASE + '/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})})
     const d = await r.json()
     if(!r.ok) { err.textContent=d.error||'Error de acceso'; return }
     localStorage.setItem(TK, d.token)
@@ -2097,7 +2097,7 @@ function logout() { localStorage.clear(); location.reload() }
 // ════════════════════════════════════════════════════
 async function cargarEstado() {
   try {
-    const r = await fetch('/estado',{headers:{Authorization:'Bearer '+(getToken()||'')}})
+    const r = await fetch(API_BASE + '/estado',{headers:{Authorization:'Bearer '+(getToken()||'')}})
     if(!r.ok) return
     const d = await r.json()
     setEstado(d.armado?'armado':'desarmado', d.armado?'Armado':'Desarmado')
@@ -2155,7 +2155,7 @@ window.addEventListener('resize', initWaveCanvas)
 // Auto-arranque si hay token
 if(getToken()) {
   // Verificar token y refrescar datos del usuario antes de iniciar
-  fetch('/api/me', { headers: { Authorization: 'Bearer ' + getToken() } })
+  fetch(API_BASE + '/api/me', { headers: { Authorization: 'Bearer ' + getToken() } })
     .then(r => {
       if (!r.ok) { localStorage.clear(); return }
       return r.json()
