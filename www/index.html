@@ -1640,7 +1640,7 @@ async function confirmarPanico(tipo) {
   let lat = null, lng = null
   if (tipo === 'ayuda' && navigator.geolocation) {
     try {
-      const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:5000}))
+      const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:15000,enableHighAccuracy:true,maximumAge:0}))
       lat = pos.coords.latitude; lng = pos.coords.longitude
     } catch {}
   }
