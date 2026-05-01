@@ -1857,7 +1857,7 @@ async function iniciarEscucha() {
     toast('Micrófono no disponible', 't-err'); return
   }
   try {
-    const stream   = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation:true, noiseSuppression:true } })
+    const stream   = await navigator.mediaDevices.getUserMedia({ audio: true })
     micStream      = stream
     const mimeType = ['audio/webm;codecs=opus','audio/webm','audio/ogg','audio/mp4']
                        .find(t => MediaRecorder.isTypeSupported(t)) || ''
@@ -1919,12 +1919,17 @@ async function iniciarEscucha() {
 
     mediaRecorder.start()
   } catch (e) {
-    if (e.name === 'NotAllowedError' || e.name === 'NotFoundError') {
+    console.error('[MIC] Error:', e.name, e.message)
+    if (e.name === 'NotAllowedError') {
       vozContinua = false
       actualizarBtnMic()
-      toast(e.name === 'NotFoundError' ? 'Sin micrófono — voz desactivada' : 'Permiso de micrófono denegado', 't-err')
+      toast('Permiso de micrófono denegado', 't-err')
+    } else if (e.name === 'NotFoundError') {
+      vozContinua = false
+      actualizarBtnMic()
+      toast('Sin micrófono — voz desactivada', 't-err')
     } else {
-      toast('No se pudo acceder al micrófono', 't-err')
+      toast('Mic error: ' + e.name, 't-err')
       if (vozContinua) setTimeout(iniciarEscucha, 3000)
     }
   }
@@ -2015,6 +2020,7 @@ function iniciar() {
   wRafId = requestAnimationFrame(drawWave)
   sphereLoop(0)
   cargarEstado()
+  setInterval(cargarEstado, 30000)
   actualizarBtnMic()
   const _salKey = 'lima_saludo_' + (u?.id || u?.usuario || 'u')
   if (!localStorage.getItem(_salKey)) {
