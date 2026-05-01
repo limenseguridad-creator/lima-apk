@@ -3,9 +3,8 @@
   "appName": "LIMA",
   "webDir": "www",
   "server": {
-    "androidScheme": "http",
-    "cleartext": true,
-    "url": "https://limaguard.ldtp.com"
+    "androidScheme": "https",
+    "cleartext": true
   },
   "android": {
     "allowMixedContent": true
