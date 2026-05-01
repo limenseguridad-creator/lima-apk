@@ -53,27 +53,24 @@ jobs:
         run: |
           MAIN=android/app/src/main/java/com/limenseguridad/lima/MainActivity.java
           cat > $MAIN << 'JAVAEOF'
-          package com.limenseguridad.lima;
-          import android.webkit.PermissionRequest;
-          import com.getcapacitor.BridgeActivity;
-          public class MainActivity extends BridgeActivity {
-            @Override
-            public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-              super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-            }
-            @Override
-            protected com.getcapacitor.Bridge initBridge() {
-              com.getcapacitor.Bridge bridge = super.initBridge();
-              bridge.getWebView().setWebChromeClient(new com.getcapacitor.BridgeWebChromeClient(bridge) {
-                @Override
-                public void onPermissionRequest(PermissionRequest request) {
-                  request.grant(request.getResources());
-                }
-              });
-              return bridge;
-            }
-          }
-          JAVAEOF
+package com.limenseguridad.lima;
+import android.os.Bundle;
+import android.webkit.PermissionRequest;
+import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebChromeClient;
+public class MainActivity extends BridgeActivity {
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    getBridge().getWebView().setWebChromeClient(new BridgeWebChromeClient(getBridge()) {
+      @Override
+      public void onPermissionRequest(PermissionRequest request) {
+        request.grant(request.getResources());
+      }
+    });
+  }
+}
+JAVAEOF
 
       - name: Set app icon
         run: |
