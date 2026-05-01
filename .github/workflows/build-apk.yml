@@ -52,25 +52,7 @@ jobs:
       - name: Patch MainActivity for WebView microphone permission
         run: |
           MAIN=android/app/src/main/java/com/limenseguridad/lima/MainActivity.java
-          cat > $MAIN << 'JAVAEOF'
-package com.limenseguridad.lima;
-import android.os.Bundle;
-import android.webkit.PermissionRequest;
-import com.getcapacitor.BridgeActivity;
-import com.getcapacitor.BridgeWebChromeClient;
-public class MainActivity extends BridgeActivity {
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    getBridge().getWebView().setWebChromeClient(new BridgeWebChromeClient(getBridge()) {
-      @Override
-      public void onPermissionRequest(PermissionRequest request) {
-        request.grant(request.getResources());
-      }
-    });
-  }
-}
-JAVAEOF
+          echo "cGFja2FnZSBjb20ubGltZW5zZWd1cmlkYWQubGltYTsKaW1wb3J0IGFuZHJvaWQub3MuQnVuZGxlOwppbXBvcnQgYW5kcm9pZC53ZWJraXQuUGVybWlzc2lvblJlcXVlc3Q7CmltcG9ydCBjb20uZ2V0Y2FwYWNpdG9yLkJyaWRnZUFjdGl2aXR5OwppbXBvcnQgY29tLmdldGNhcGFjaXRvci5CcmlkZ2VXZWJDaHJvbWVDbGllbnQ7CnB1YmxpYyBjbGFzcyBNYWluQWN0aXZpdHkgZXh0ZW5kcyBCcmlkZ2VBY3Rpdml0eSB7CiAgQE92ZXJyaWRlCiAgcHJvdGVjdGVkIHZvaWQgb25DcmVhdGUoQnVuZGxlIHNhdmVkSW5zdGFuY2VTdGF0ZSkgewogICAgc3VwZXIub25DcmVhdGUoc2F2ZWRJbnN0YW5jZVN0YXRlKTsKICAgIGdldEJyaWRnZSgpLmdldFdlYlZpZXcoKS5zZXRXZWJDaHJvbWVDbGllbnQobmV3IEJyaWRnZVdlYkNocm9tZUNsaWVudChnZXRCcmlkZ2UoKSkgewogICAgICBAT3ZlcnJpZGUKICAgICAgcHVibGljIHZvaWQgb25QZXJtaXNzaW9uUmVxdWVzdChQZXJtaXNzaW9uUmVxdWVzdCByZXF1ZXN0KSB7CiAgICAgICAgcmVxdWVzdC5ncmFudChyZXF1ZXN0LmdldFJlc291cmNlcygpKTsKICAgICAgfQogICAgfSk7CiAgfQp9Cg==" | base64 -d > $MAIN
 
       - name: Set app icon
         run: |
