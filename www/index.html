@@ -387,7 +387,6 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
     <div id="hdr-usuario"></div>
     <div style="display:flex;gap:6px">
       <button id="btn-settings" onclick="mostrarModulos()">⚙</button>
-      <button id="btn-logout" onclick="logout()" title="Salir">⏻</button>
     </div>
   </div>
 </div>
@@ -464,6 +463,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
   <div style="font-size:17px;font-weight:700;color:var(--pL)" id="mod-cliente">—</div>
   <div class="mod-list" id="mod-list"></div>
   <button class="mod-btn secondary" onclick="mostrarCambiarPassword()" style="margin-top:4px">🔑 Cambiar contraseña</button>
+  <button class="mod-btn secondary" onclick="logout()" style="margin-top:4px;border-color:rgba(239,68,68,.4);color:rgba(239,68,68,.85)">⏻ Cerrar sesión</button>
   <button id="mod-close" onclick="document.getElementById('mod-panel').classList.remove('show')">Cerrar</button>
 </div>
 
@@ -714,88 +714,6 @@ function drawSphere(ts) {
   sCtx.lineWidth = 1.5
   sCtx.stroke()
 
-  // ── LIMA text en el centro ──
-  sCtx.save()
-  sCtx.font = `bold ${(coreR * 0.55)|0}px 'Segoe UI', monospace`
-  sCtx.textAlign = 'center'
-  sCtx.textBaseline = 'middle'
-  sCtx.shadowColor = `rgba(${r|0},${g|0},${b|0},1)`
-  sCtx.shadowBlur = 18
-  sCtx.fillStyle = 'rgba(255,255,255,0.95)'
-  sCtx.fillText('LIMA', cx, cy)
-  sCtx.restore()
-
-  // ── Diamante de circuito alrededor de la esfera ──
-  ;(function drawCircuitDiamond() {
-    const dW = baseR * 1.1
-    const dH = baseR * 0.75
-    const pts = [[0,-dH],[dW,0],[0,dH],[-dW,0]]
-    const lineAlpha = 0.65 + sphere.energy * 0.35
-    sCtx.save()
-    sCtx.translate(cx, cy)
-    // Diamante principal
-    sCtx.beginPath()
-    pts.forEach(([px,py],i) => i===0 ? sCtx.moveTo(px,py) : sCtx.lineTo(px,py))
-    sCtx.closePath()
-    sCtx.shadowColor = 'rgba(0,220,255,0.9)'
-    sCtx.shadowBlur = 16
-    sCtx.strokeStyle = `rgba(0,220,255,${lineAlpha})`
-    sCtx.lineWidth = 1.8
-    sCtx.stroke()
-    // Nodos en vértices
-    pts.forEach(([px,py]) => {
-      sCtx.beginPath(); sCtx.arc(px,py,4+sphere.energy*2,0,Math.PI*2)
-      sCtx.fillStyle = 'rgba(255,255,255,0.95)'; sCtx.shadowBlur = 20; sCtx.fill()
-    })
-    // Líneas de circuito radiales desde vértices
-    pts.forEach(([px,py]) => {
-      const angle = Math.atan2(py,px)
-      const ext = baseR * 0.35
-      sCtx.beginPath()
-      sCtx.moveTo(px,py)
-      sCtx.lineTo(px + Math.cos(angle)*ext, py + Math.sin(angle)*ext)
-      sCtx.strokeStyle = `rgba(0,220,255,${lineAlpha*0.5})`
-      sCtx.lineWidth = 1
-      sCtx.shadowBlur = 6
-      sCtx.stroke()
-      // Nodo exterior
-      sCtx.beginPath(); sCtx.arc(px+Math.cos(angle)*ext, py+Math.sin(angle)*ext, 2.5, 0, Math.PI*2)
-      sCtx.fillStyle = `rgba(0,220,255,0.8)`; sCtx.fill()
-    })
-    // Cruz interna
-    const inner = baseR * 0.52
-    ;[0,1].forEach(ax => {
-      const a = ax * Math.PI/2
-      sCtx.beginPath()
-      sCtx.moveTo(Math.cos(a)*inner*0.25, Math.sin(a)*inner*0.25)
-      sCtx.lineTo(Math.cos(a)*inner, Math.sin(a)*inner)
-      sCtx.strokeStyle = `rgba(160,32,255,${lineAlpha*0.6})`
-      sCtx.lineWidth = 1
-      sCtx.shadowColor = 'rgba(160,32,255,0.8)'
-      sCtx.shadowBlur = 8
-      sCtx.stroke()
-    })
-    sCtx.restore()
-  })()
-
-  // ── Anillos orbitales neon ──
-  sCtx.save()
-  sCtx.beginPath()
-  sCtx.ellipse(cx, cy, baseR * 1.08, baseR * 0.18, sphere.rotation * 0.3, 0, Math.PI * 2)
-  sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.7 + sphere.energy * 0.3})`
-  sCtx.lineWidth   = 1.5
-  sCtx.stroke()
-
-  sCtx.save()
-  sCtx.translate(cx, cy)
-  sCtx.rotate(sphere.rotation * 0.5 + Math.PI * 0.25)
-  sCtx.beginPath()
-  sCtx.ellipse(0, 0, baseR * 1.12, baseR * 0.2, Math.PI * 0.35, 0, Math.PI * 2)
-  sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.55 + sphere.energy * 0.3})`
-  sCtx.lineWidth   = 1.2
-  sCtx.stroke()
-  sCtx.restore()
-
   sCtx.restore()
 
 
@@ -929,35 +847,10 @@ function drawSphere(ts) {
     sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.35 + sphere.energy * 0.30})`
     sCtx.lineWidth = 1.0
     sCtx.stroke()
-    // Rombo en punta
-    const dSz = 3 + sphere.energy * 3
-    sCtx.save()
-    sCtx.translate(xE, yE)
-    sCtx.rotate(a + Math.PI / 4)
-    sCtx.shadowColor = 'rgba(255,255,255,1)'
-    sCtx.shadowBlur  = 12
-    sCtx.strokeStyle = `rgba(255,255,255,${0.75 + sphere.energy * 0.25})`
-    sCtx.lineWidth = 1.2
-    sCtx.strokeRect(-dSz/2, -dSz/2, dSz, dSz)
-    sCtx.restore()
   }
 
   sCtx.restore()
 
-  // ── Anillos orbitales extra ──
-  const nRings = IS_MOBILE ? 3 : 4
-  for (let ri = 0; ri < nRings; ri++) {
-    const rot = sphere.rotation * (0.6 + ri * 0.35) + ri * Math.PI * 0.4
-    sCtx.save()
-    sCtx.translate(cx, cy)
-    sCtx.rotate(rot)
-    sCtx.beginPath()
-    sCtx.ellipse(0, 0, baseR * (1.35 + ri * 0.22), baseR * (0.13 + ri * 0.04), ri * Math.PI / 5, 0, Math.PI * 2)
-    sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.45 + sphere.energy * 0.35})`
-    sCtx.lineWidth = 1
-    sCtx.stroke()
-    sCtx.restore()
-  }
 
   // ── Arcos de energía ──
   if (Math.random() < 0.04 + sphere.energy * 0.08) spawnArc(baseR, r, g, b)
@@ -2123,24 +2016,29 @@ function iniciar() {
   sphereLoop(0)
   cargarEstado()
   actualizarBtnMic()
-  setTimeout(() => {
-    const nombre = u?.nombre?.split(' ')[0] || ''
-    addMsg(`Hola${nombre?' '+nombre:''}, soy LIMA. ¿En qué puedo ayudarte?`, 'lima', 'bienvenida')
-    // Saludo inicial: hablar sin activar escucha automática al terminar
-    if (ttsEnabled) {
-      window.speechSynthesis.cancel()
-      const utter = new SpeechSynthesisUtterance(`Hola${nombre?' '+nombre:''}, soy LIMA. ¿En qué puedo ayudarte?`)
-      utter.lang = 'es-AR'; utter.rate = 1.05
-      utter.onstart = () => { setAvatarState('speaking'); setWaveState('speaking') }
-      utter.onend = () => {
-        setAvatarState('idle'); setWaveState('idle')
-        if (vozContinua) setTimeout(iniciarEscucha, 2500)  // pausa extra en saludo
+  const _salKey = 'lima_saludo_' + (u?.id || u?.usuario || 'u')
+  if (!localStorage.getItem(_salKey)) {
+    localStorage.setItem(_salKey, '1')
+    setTimeout(() => {
+      const nombre = u?.nombre?.split(' ')[0] || ''
+      addMsg(`Hola${nombre?' '+nombre:''}, soy LIMA. ¿En qué puedo ayudarte?`, 'lima', 'bienvenida')
+      if (ttsEnabled) {
+        window.speechSynthesis.cancel()
+        const utter = new SpeechSynthesisUtterance(`Hola${nombre?' '+nombre:''}, soy LIMA. ¿En qué puedo ayudarte?`)
+        utter.lang = 'es-AR'; utter.rate = 1.05
+        utter.onstart = () => { setAvatarState('speaking'); setWaveState('speaking') }
+        utter.onend = () => {
+          setAvatarState('idle'); setWaveState('idle')
+          if (vozContinua) setTimeout(iniciarEscucha, 2500)
+        }
+        window.speechSynthesis.speak(utter)
+      } else if (vozContinua) {
+        setTimeout(iniciarEscucha, 1200)
       }
-      window.speechSynthesis.speak(utter)
-    } else if (vozContinua) {
-      setTimeout(iniciarEscucha, 1200)
-    }
-  }, 800)
+    }, 800)
+  } else if (vozContinua) {
+    setTimeout(iniciarEscucha, 1200)
+  }
 }
 
 // Input

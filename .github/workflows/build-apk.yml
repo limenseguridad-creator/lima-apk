@@ -49,6 +49,32 @@ jobs:
           MANIFEST=android/app/src/main/AndroidManifest.xml
           grep -q 'RECORD_AUDIO' $MANIFEST || sed -i 's|<application|<uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <application|' $MANIFEST
 
+      - name: Patch MainActivity for WebView microphone permission
+        run: |
+          MAIN=android/app/src/main/java/com/limenseguridad/lima/MainActivity.java
+          cat > $MAIN << 'JAVAEOF'
+          package com.limenseguridad.lima;
+          import android.webkit.PermissionRequest;
+          import com.getcapacitor.BridgeActivity;
+          public class MainActivity extends BridgeActivity {
+            @Override
+            public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+              super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+            }
+            @Override
+            protected com.getcapacitor.Bridge initBridge() {
+              com.getcapacitor.Bridge bridge = super.initBridge();
+              bridge.getWebView().setWebChromeClient(new com.getcapacitor.BridgeWebChromeClient(bridge) {
+                @Override
+                public void onPermissionRequest(PermissionRequest request) {
+                  request.grant(request.getResources());
+                }
+              });
+              return bridge;
+            }
+          }
+          JAVAEOF
+
       - name: Set app icon
         run: |
           sudo apt-get install -y imagemagick 2>/dev/null
