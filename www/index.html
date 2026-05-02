@@ -1376,6 +1376,7 @@ function hablarRespuesta(texto) {
   utter.onerror = () => {
     setAvatarState('idle')
     setWaveState('idle')
+    if (vozContinua) setTimeout(iniciarEscucha, 2000)
   }
   window.speechSynthesis.speak(utter)
 }
@@ -1503,7 +1504,7 @@ function iniciarSilenceDetector(stream) {
   }
 }
 
-async function iniciarEscucha() {
+async function iniciarEscucha(retryCount = 0) {
   if (grabando) return
   if (!navigator.mediaDevices?.getUserMedia) {
     toast('Micrófono no disponible', 't-err'); return
@@ -1584,15 +1585,21 @@ async function iniciarEscucha() {
       actualizarBtnMic()
       toast('Sin micrófono — voz desactivada', 't-err')
     } else if (e.name === 'NotReadableError') {
-      // Mic is busy — could be another app OR the same app not releasing fast enough
+      // Mic is busy — auto-retry up to 3 times with increasing delay before showing error
+      if (retryCount < 3) {
+        const delay = (retryCount + 1) * 2500  // 2.5s, 5s, 7.5s
+        console.warn('[MIC] NotReadableError, reintentando en', delay, 'ms (intento', retryCount + 1, 'de 3)')
+        setTimeout(() => iniciarEscucha(retryCount + 1), delay)
+        return
+      }
       vozContinua = false
       actualizarBtnMic()
-      // Show message with retry button in chat
+      // Show message with retry button in chat (only after all retries failed)
       document.getElementById('chat-empty').style.display = 'none'
       const wrap = document.createElement('div'); wrap.className = 'msg lima'
       wrap.innerHTML = '<div class="msg-av" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center">L</div>' +
         '<div class="msg-inner"><div class="msg-bubble" style="display:flex;flex-direction:column;gap:6px">' +
-        '<span>Micrófono ocupado. Si usabas voz antes, esperá unos segundos.</span>' +
+        '<span>Micrófono ocupado. Cerrá otras apps que usen el micrófono y reintentá.</span>' +
         '<button onclick="reintentarMic(this)" style="background:var(--p);color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:1px">🎙 REINTENTAR</button>' +
         '</div></div>'
       document.getElementById('chat').insertBefore(wrap, document.getElementById('typing'))
