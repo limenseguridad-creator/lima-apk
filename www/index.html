@@ -1542,7 +1542,7 @@ async function iniciarEscucha() {
       if (blob.size < 5000 || recDuration < 1200) {
         // Audio demasiado corto o vacío — evita alucinaciones de Whisper
         setAvatarState('idle')
-        if (vozContinua) setTimeout(iniciarEscucha, 800)
+        if (vozContinua) setTimeout(iniciarEscucha, 2000) // 2s for Android to fully release mic
         return
       }
 
@@ -1563,11 +1563,11 @@ async function iniciarEscucha() {
           // El mic se reactiva en hablarRespuesta.onend
         } else {
           setAvatarState('idle')
-          if (vozContinua) setTimeout(iniciarEscucha, 800)
+          if (vozContinua) setTimeout(iniciarEscucha, 2000) // 2s for Android mic release
         }
       } catch {
         setAvatarState('idle')
-        if (vozContinua) setTimeout(iniciarEscucha, 800)
+        if (vozContinua) setTimeout(iniciarEscucha, 2000)
         toast('Error al procesar audio', 't-err')
       }
     }
@@ -1584,15 +1584,35 @@ async function iniciarEscucha() {
       actualizarBtnMic()
       toast('Sin micrófono — voz desactivada', 't-err')
     } else if (e.name === 'NotReadableError') {
-      // Mic is busy (in use by another app or hardware not released yet)
+      // Mic is busy — could be another app OR the same app not releasing fast enough
       vozContinua = false
       actualizarBtnMic()
-      toast('Micrófono ocupado — cerrá otras apps y reintentá', 't-err')
+      // Show message with retry button in chat
+      document.getElementById('chat-empty').style.display = 'none'
+      const wrap = document.createElement('div'); wrap.className = 'msg lima'
+      wrap.innerHTML = '<div class="msg-av" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center">L</div>' +
+        '<div class="msg-inner"><div class="msg-bubble" style="display:flex;flex-direction:column;gap:6px">' +
+        '<span>Micrófono ocupado. Si usabas voz antes, esperá unos segundos.</span>' +
+        '<button onclick="reintentarMic(this)" style="background:var(--p);color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:1px">🎙 REINTENTAR</button>' +
+        '</div></div>'
+      document.getElementById('chat').insertBefore(wrap, document.getElementById('typing'))
     } else {
       toast('Mic error: ' + e.name, 't-err')
       if (vozContinua) setTimeout(iniciarEscucha, 5000)
     }
   }
+}
+
+// Reintentar mic desde botón en chat (después de NotReadableError)
+function reintentarMic(btn) {
+  if (btn) btn.disabled = true
+  // Ensure previous stream is fully released before retrying
+  if (micStream) { try { micStream.getTracks().forEach(t => t.stop()) } catch {} ; micStream = null }
+  setTimeout(() => {
+    vozContinua = true
+    actualizarBtnMic()
+    iniciarEscucha()
+  }, 1200)
 }
 
 // Compatibilidad: toggleVoz sigue funcionando para llamadas existentes
@@ -1703,6 +1723,14 @@ function iniciar() {
     setTimeout(iniciarEscucha, 1200)
   }
 }
+
+// Release mic when app goes to background (prevents "NotReadableError" on resume)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    if (grabando && mediaRecorder) { try { mediaRecorder.stop() } catch {} }
+    if (micStream) { try { micStream.getTracks().forEach(t => t.stop()) } catch {} ; micStream = null }
+  }
+})
 
 // Input
 inp.addEventListener('input', function() {
