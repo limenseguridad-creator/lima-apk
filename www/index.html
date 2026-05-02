@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-lima-state="violet">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
@@ -13,14 +13,28 @@
 <title>LIMA · Asistente IA</title>
 <style>
 :root{
-  --bg:#0d0118;--bg2:#130524;--bg3:#1c0a35;
+  --bg:#060010;--bg2:#0a0011;--bg3:#100020;
   --border:rgba(139,92,246,.22);
   --p:#8b5cf6;--pL:#c084fc;--pD:#5b21b6;
   --green:#10b981;--red:#ef4444;--orange:#f59e0b;--cyan:#06b6d4;
   --text:#ede9fe;--muted:#7c6ea8;
   --glass:rgba(13,1,24,.55);--glassB:rgba(139,92,246,.18);
   --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+  --c-main:#9B30FF;--c-glow:#BF7FFF;--c-dark:#5A0FAA;--c-dim:rgba(155,48,255,0.15);
+  --violet-main:#9B30FF;--violet-glow:#BF7FFF;--violet-dark:#5A0FAA;--violet-dim:rgba(155,48,255,0.15);
+  --red-main:#FF3A3A;--red-glow:#FF7070;--red-dark:#8B0000;--red-dim:rgba(255,58,58,0.15);
+  --green-main:#00FF88;--green-glow:#7FFFCC;--green-dark:#006633;--green-dim:rgba(0,255,136,0.15);
+  --amber-main:#FFB800;--amber-glow:#FFD966;--amber-dark:#7A5500;--amber-dim:rgba(255,184,0,0.15);
 }
+/* Estado via data attribute en html tag — cambia todos los colores */
+[data-lima-state="violet"],[data-lima-state="violet"] body { --c-main:#9B30FF;--c-glow:#BF7FFF;--c-dark:#5A0FAA;--c-dim:rgba(155,48,255,0.15); }
+[data-lima-state="red"],[data-lima-state="red"] body    { --c-main:#FF3A3A;--c-glow:#FF7070;--c-dark:#8B0000;--c-dim:rgba(255,58,58,0.15); }
+[data-lima-state="green"],[data-lima-state="green"] body { --c-main:#00FF88;--c-glow:#7FFFCC;--c-dark:#006633;--c-dim:rgba(0,255,136,0.15); }
+[data-lima-state="amber"],[data-lima-state="amber"] body { --c-main:#FFB800;--c-glow:#FFD966;--c-dark:#7A5500;--c-dim:rgba(255,184,0,0.15); }
+/* Compatibilidad con sistema antiguo */
+body.lima-red   { --c-main:#FF3A3A;--c-glow:#FF7070;--c-dark:#8B0000;--c-dim:rgba(255,58,58,0.15); }
+body.lima-green { --c-main:#00FF88;--c-glow:#7FFFCC;--c-dark:#006633;--c-dim:rgba(0,255,136,0.15); }
+body.lima-amber { --c-main:#FFB800;--c-glow:#FFD966;--c-dark:#7A5500;--c-dim:rgba(255,184,0,0.15); }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif}
 
@@ -42,31 +56,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .btn-login:disabled{opacity:.5}
 #login-err{font-size:12px;color:var(--red);text-align:center;min-height:16px}
 
-/* ── AVATAR FULLSCREEN ── */
-#avatar-bg{position:fixed;inset:0;z-index:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
-#avatar-bg::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,#06091a 0%,#020510 75%);z-index:0}
-/* ── ESFERA CANVAS ── */
-#lima-sphere{
-  position:fixed;z-index:1;
-  top:0;left:0;
-  width:100vw;height:100vh;
-  pointer-events:none;
-}
+/* ── AVATAR FULLSCREEN (removed canvas elements) ── */
 #lima-label{display:none}
-/* Canvas wave — posicionado sobre la cara */
-#circuit-bg{position:fixed;z-index:0;pointer-events:none;top:0;left:0;width:100vw;height:100vh}
-#wave-canvas{position:fixed;z-index:2;pointer-events:none;top:0;left:0;width:100vw;height:100vh}
-
-/* Glow de estado sobre la imagen */
-#avatar-glow{
-  position:fixed;z-index:3;pointer-events:none;
-  inset:0;
-  background:transparent;
-  transition:background .6s ease;
-}
-body.st-armado    #avatar-glow{background:radial-gradient(ellipse at 50% 30%,rgba(239,68,68,.08) 0%,transparent 70%)}
-body.st-panico    #avatar-glow{background:radial-gradient(ellipse at 50% 30%,rgba(245,158,11,.12) 0%,transparent 70%)}
-body.st-desarmado #avatar-glow{background:radial-gradient(ellipse at 50% 30%,rgba(16,185,129,.05) 0%,transparent 70%)}
 
 /* ── HEADER ── */
 #header{
@@ -76,7 +67,7 @@ body.st-desarmado #avatar-glow{background:radial-gradient(ellipse at 50% 30%,rgb
   background:linear-gradient(to bottom,rgba(13,1,24,.8) 0%,transparent 100%);
   backdrop-filter:blur(4px);
 }
-#hdr-name{font-size:22px;font-weight:900;letter-spacing:6px;color:var(--pL);text-shadow:0 0 20px rgba(192,132,252,.5)}
+#hdr-name{font-size:22px;font-weight:900;letter-spacing:6px;color:var(--c-glow);text-shadow:0 0 20px rgba(192,132,252,.5)}
 #hdr-sub{font-size:8px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
 #hdr-center{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
 #estado-badge{display:flex;align-items:center;gap:5px;padding:3px 12px;border-radius:20px;border:1px solid var(--border);background:rgba(13,1,24,.6);backdrop-filter:blur(8px)}
@@ -115,20 +106,20 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 .sbtn{
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
   width:68px;height:72px;border-radius:14px;
-  border:1px solid rgba(0,210,255,.22);
-  background:rgba(0,5,20,.65);
+  border:1px solid rgba(155,48,255,.22);
+  background:rgba(0,0,16,.65);
   backdrop-filter:blur(14px);
-  color:rgba(0,200,255,.6);cursor:pointer;
+  color:rgba(155,48,255,.6);cursor:pointer;
   transition:all .22s;user-select:none;
   -webkit-tap-highlight-color:transparent;
-  box-shadow:0 0 8px rgba(0,150,255,.08),inset 0 0 12px rgba(0,100,255,.04);
+  box-shadow:0 0 8px rgba(155,48,255,.08),inset 0 0 12px rgba(155,48,255,.04);
 }
-.sbtn:active{transform:scale(.88) !important;background:rgba(0,180,255,.15)}
-.sbtn .ico{font-size:22px;line-height:1;filter:drop-shadow(0 0 4px rgba(0,200,255,.5))}
-.sbtn .lbl{font-size:6.5px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;line-height:1.2;color:rgba(150,220,255,.8)}
+.sbtn:active{transform:scale(.88) !important;background:var(--c-dim)}
+.sbtn .ico{font-size:22px;line-height:1;filter:drop-shadow(0 0 4px var(--c-dim))}
+.sbtn .lbl{font-size:6.5px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;line-height:1.2;color:rgba(191,127,255,.8)}
 .sbtn:hover,.sbtn.active{
-  border-color:rgba(0,220,255,.6);background:rgba(0,150,255,.18);
-  color:#00e5ff;box-shadow:0 0 20px rgba(0,200,255,.35),inset 0 0 10px rgba(0,180,255,.1);
+  border-color:var(--c-main);background:var(--c-dim);
+  color:var(--c-main);box-shadow:0 0 20px var(--c-dim),inset 0 0 10px var(--c-dim);
 }
 .sbtn.panic-btn{border-color:rgba(239,68,68,.4);color:rgba(239,68,68,.8)}
 .sbtn.panic-btn .lbl{color:rgba(255,150,150,.8)}
@@ -137,7 +128,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
   color:var(--red);box-shadow:0 0 20px rgba(239,68,68,.4)
 }
 .sbtn.locked{opacity:.22;pointer-events:none}
-.alarma-status{font-size:5.5px;letter-spacing:1.5px;text-transform:uppercase;font-weight:800;padding:1px 4px;border-radius:4px;transition:all .4s;background:rgba(0,200,255,.1);color:rgba(0,200,255,.5);border:1px solid rgba(0,200,255,.2)}
+.alarma-status{font-size:5.5px;letter-spacing:1.5px;text-transform:uppercase;font-weight:800;padding:1px 4px;border-radius:4px;transition:all .4s;background:var(--c-dim);color:var(--c-main);border:1px solid rgba(155,48,255,.2)}
 .alarma-status.arm{background:rgba(239,68,68,.18);color:#f87171;border-color:rgba(239,68,68,.5)}
 .alarma-status.des{background:rgba(16,185,129,.15);color:#34d399;border-color:rgba(16,185,129,.5)}
 .alarma-status.pan{background:rgba(245,158,11,.18);color:#fbbf24;border-color:rgba(245,158,11,.5);animation:blink-d .5s infinite alternate}
@@ -337,15 +328,100 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 
 /* -- LOGIN SPHERE -- */
 .login-sphere{position:relative;width:120px;height:120px;margin-bottom:8px;flex-shrink:0}
-.ls-core{position:absolute;inset:10px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#c084fc,#8b5cf6 45%,#5b21b6 80%,#2e1065);box-shadow:0 0 30px rgba(139,92,246,.7),0 0 60px rgba(139,92,246,.3);animation:ls-pulse 3s ease-in-out infinite}
-.ls-ring{position:absolute;border-radius:50%;border:1px solid rgba(139,92,246,.4);animation:ls-spin 8s linear infinite}
+.ls-core{position:absolute;inset:10px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#BF7FFF,#9B30FF 45%,#5A0FAA 80%,#2e1065);box-shadow:0 0 30px rgba(155,48,255,.7),0 0 60px rgba(155,48,255,.3);animation:ls-pulse 3s ease-in-out infinite}
+.ls-ring{position:absolute;border-radius:50%;border:1px solid rgba(155,48,255,.4);animation:ls-spin 8s linear infinite}
 .ls-ring.r1{inset:2px;animation-duration:8s}
-.ls-ring.r2{inset:-4px;border-color:rgba(192,132,252,.25);animation-duration:14s;animation-direction:reverse}
-.ls-glow{position:absolute;inset:-15px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,.15) 0%,transparent 70%);animation:ls-pulse 3s ease-in-out infinite}
+.ls-ring.r2{inset:-4px;border-color:rgba(191,127,255,.25);animation-duration:14s;animation-direction:reverse}
+.ls-glow{position:absolute;inset:-15px;border-radius:50%;background:radial-gradient(circle,rgba(155,48,255,.15) 0%,transparent 70%);animation:ls-pulse 3s ease-in-out infinite}
 @keyframes ls-pulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.06);opacity:1}}
 @keyframes ls-spin{to{transform:rotate(360deg)}}
-.login-build{font-size:9px;color:rgba(139,92,246,.5);letter-spacing:2px;margin-bottom:20px;text-transform:uppercase}
+.login-build{font-size:9px;color:rgba(155,48,255,.5);letter-spacing:2px;margin-bottom:20px;text-transform:uppercase}
 .login-avatar{display:none}
+
+/* ── ORB SYSTEM V3 ── */
+#bg-rings{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:visible}
+#lima-orb-wrap{position:fixed;inset:0;z-index:1;pointer-events:none;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+#bg-state-glow{position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,var(--c-dim) 0%,transparent 60%);transition:all 0.8s ease;pointer-events:none}
+#orb-shield-svg{position:absolute;width:260px;height:286px;opacity:1;pointer-events:none;transition:all 0.6s ease}
+#lima-orb{
+  position:relative;
+  width:200px;height:200px;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* Glow layers */
+.orb-glow-out{
+  position:absolute;inset:-36px;border-radius:50%;
+  background:radial-gradient(circle,var(--c-main)30 0%,var(--c-main)12 40%,transparent 72%);
+  filter:blur(8px);
+  animation:orbPulse 2.5s ease-in-out infinite;
+  transition:all 0.6s;
+}
+.orb-glow-in{
+  position:absolute;inset:56px;border-radius:50%;
+  background:radial-gradient(circle,var(--c-glow)88 0%,var(--c-main)44 50%,transparent 100%);
+  filter:blur(6px);
+  animation:orbPulse 2.5s ease-in-out infinite 0.3s;
+  transition:all 0.6s;
+}
+
+/* Ripple waves */
+.orb-ripple{
+  position:absolute;width:200px;height:200px;border-radius:50%;
+  border:1px solid var(--c-main);opacity:0;
+  animation:orbRipple 2.5s ease-out infinite;
+  transition:border-color 0.6s;
+}
+.orb-ripple:nth-child(2){animation-delay:0.5s;animation-duration:3s}
+.orb-ripple:nth-child(3){animation-delay:1s;animation-duration:3.5s}
+
+/* SVG rings overlay */
+.orb-rings-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.orb-eye-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+
+/* Particles */
+.orb-particles{position:absolute;inset:0}
+.particle{
+  position:absolute;
+  border-radius:50%;
+  animation:particleSpin var(--dur,4s) linear infinite;
+  animation-delay:var(--delay,0s);
+  left:50%;top:50%;
+  width:calc(var(--r,50px)*2);height:calc(var(--r,50px)*2);
+  margin-left:calc(-1*var(--r,50px));
+  margin-top:calc(-1*var(--r,50px));
+}
+.particle-dot{
+  position:absolute;top:0;left:50%;
+  width:var(--sz,4px);height:var(--sz,4px);
+  border-radius:50%;
+  transform:translateX(-50%) translateY(-50%);
+  background:var(--dot-color,#fff);
+  opacity:0.85;
+  box-shadow:0 0 4px var(--dot-color,#fff);
+}
+.particle-dot2{
+  position:absolute;bottom:0;left:50%;
+  width:var(--sz,4px);height:var(--sz,4px);
+  border-radius:50%;
+  transform:translateX(-50%) translateY(50%);
+  background:var(--dot-color,#fff);
+  opacity:0.5;
+  box-shadow:0 0 3px var(--dot-color,#fff);
+}
+
+/* State animations */
+body.lima-active .orb-glow-out{animation-duration:0.9s}
+body.lima-active .orb-ripple{animation-duration:1.5s}
+body.lima-active .orb-ripple:nth-child(2){animation-duration:1.8s}
+body.lima-active .orb-ripple:nth-child(3){animation-duration:2.1s}
+
+@keyframes orbPulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
+@keyframes orbRipple{0%{transform:scale(0.8);opacity:0.6}100%{transform:scale(2.4);opacity:0}}
+@keyframes particleSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes arcSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes arcSpinRev{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}
+@keyframes glowPulse{0%,100%{opacity:0.3}50%{opacity:0.8}}
 </style>
 </head>
 <body>
@@ -369,12 +445,82 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
   </div>
 </div>
 
-<!-- AVATAR FULLSCREEN -->
-<div id="avatar-bg"></div>
-<canvas id="lima-sphere"></canvas>
-<canvas id="circuit-bg"></canvas>
-<canvas id="wave-canvas"></canvas>
-<div id="avatar-glow"></div>
+<!-- BACKGROUND RINGS -->
+<svg id="bg-rings" viewBox="0 0 320 680" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+  <g id="bg-rings-g" opacity="1">
+    <!-- Main concentric rings centered at 160,340 -->
+    <circle cx="160" cy="340" r="90"  fill="none" stroke="var(--c-main)" stroke-width="1.4" opacity="0.22" style="filter:drop-shadow(0 0 6px var(--c-main))"/>
+    <circle cx="160" cy="340" r="145" fill="none" stroke="var(--c-glow)" stroke-width="0.7" opacity="0.12" stroke-dasharray="4 8"/>
+    <circle cx="160" cy="340" r="200" fill="none" stroke="var(--c-main)" stroke-width="0.6" opacity="0.09" stroke-dasharray="3 12"/>
+    <circle cx="160" cy="340" r="265" fill="none" stroke="var(--c-main)" stroke-width="0.5" opacity="0.07" stroke-dasharray="2 15"/>
+    <circle cx="160" cy="340" r="335" fill="none" stroke="var(--c-main)" stroke-width="0.4" opacity="0.05" stroke-dasharray="2 20"/>
+    <circle cx="160" cy="340" r="162" fill="none" stroke="var(--c-glow)" stroke-width="1.0" opacity="0.14" style="filter:drop-shadow(0 0 4px var(--c-glow))"/>
+    <circle cx="160" cy="340" r="270" fill="none" stroke="#fff"          stroke-width="0.7" opacity="0.06"/>
+    <!-- Corner rings top-left -->
+    <circle cx="30"  cy="80"  r="60"  fill="none" stroke="var(--c-main)" stroke-width="0.5" opacity="0.08" stroke-dasharray="3 8"/>
+    <circle cx="30"  cy="80"  r="110" fill="none" stroke="var(--c-main)" stroke-width="0.4" opacity="0.05" stroke-dasharray="2 12"/>
+    <!-- Corner rings bottom-right -->
+    <circle cx="290" cy="600" r="55"  fill="none" stroke="var(--c-main)" stroke-width="0.5" opacity="0.08" stroke-dasharray="3 8"/>
+    <circle cx="290" cy="600" r="100" fill="none" stroke="var(--c-main)" stroke-width="0.4" opacity="0.05" stroke-dasharray="2 12"/>
+    <!-- Corner rings top-right -->
+    <circle cx="300" cy="90"  r="45"  fill="none" stroke="var(--c-glow)" stroke-width="0.5" opacity="0.07" stroke-dasharray="2 10"/>
+    <!-- Corner rings bottom-left -->
+    <circle cx="20"  cy="590" r="50"  fill="none" stroke="var(--c-glow)" stroke-width="0.4" opacity="0.06" stroke-dasharray="2 10"/>
+  </g>
+</svg>
+
+<!-- ORB CENTRAL V3 -->
+<div id="lima-orb-wrap">
+  <!-- Glow de fondo radial del estado -->
+  <div id="bg-state-glow"></div>
+  <!-- Shield decorativo -->
+  <svg id="orb-shield-svg" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+    <path d="M100 10 L180 50 L180 120 Q180 180 100 210 Q20 180 20 120 L20 50 Z"
+      fill="none" stroke="var(--c-main)" stroke-width="1.5" opacity="0.15"/>
+    <path d="M100 22 L168 57 L168 118 Q168 170 100 197 Q32 170 32 118 L32 57 Z"
+      fill="none" stroke="var(--c-glow)" stroke-width="0.7" opacity="0.10" stroke-dasharray="4 8"/>
+  </svg>
+  <div id="lima-orb">
+    <!-- Ripple waves -->
+    <div class="orb-ripple"></div>
+    <div class="orb-ripple"></div>
+    <div class="orb-ripple"></div>
+
+    <!-- Glow outer -->
+    <div class="orb-glow-out"></div>
+
+    <!-- SVG arc rings (6 anillos) -->
+    <svg class="orb-rings-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="100" r="88"   fill="none" stroke="var(--c-main)" stroke-width="1.2" stroke-dasharray="18 10" opacity="0.65" style="animation:arcSpin    4s  linear infinite;transform-origin:100px 100px"/>
+      <circle cx="100" cy="100" r="72"   fill="none" stroke="var(--c-main)" stroke-width="1.0" stroke-dasharray="8 16"  opacity="0.55" style="animation:arcSpinRev 3s  linear infinite;transform-origin:100px 100px"/>
+      <circle cx="100" cy="100" r="55"   fill="none" stroke="var(--c-glow)" stroke-width="0.9" stroke-dasharray="5 8"   opacity="0.50" style="animation:arcSpin    2.2s linear infinite;transform-origin:100px 100px"/>
+      <circle cx="100" cy="100" r="40"   fill="none" stroke="var(--c-glow)" stroke-width="0.8" stroke-dasharray="3 5"   opacity="0.45" style="animation:arcSpinRev 1.6s linear infinite;transform-origin:100px 100px"/>
+      <circle cx="100" cy="100" r="105"  fill="none" stroke="var(--c-main)" stroke-width="0.7" stroke-dasharray="4 30"  opacity="0.25" style="animation:arcSpin    8s  linear infinite;transform-origin:100px 100px"/>
+      <circle cx="100" cy="100" r="118"  fill="none" stroke="var(--c-main)" stroke-width="0.6" stroke-dasharray="2 20"  opacity="0.18" style="animation:arcSpinRev 12s linear infinite;transform-origin:100px 100px"/>
+    </svg>
+
+    <!-- Glow inner -->
+    <div class="orb-glow-in"></div>
+
+    <!-- Particles (18) - generadas via JS en initOrb() -->
+    <div class="orb-particles" id="orb-particles"></div>
+
+    <!-- Eye center SVG -->
+    <svg class="orb-eye-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <!-- Halo glow central -->
+      <circle cx="100" cy="100" r="38" fill="var(--c-main)" opacity="0.12" style="animation:glowPulse 2.5s ease-in-out infinite"/>
+      <!-- Hexagon exterior (6 puntos, radio 19px, rotación lenta) -->
+      <polygon id="orb-hex" points="100,81 116.5,90.5 116.5,109.5 100,119 83.5,109.5 83.5,90.5" fill="none" stroke="var(--c-main)" stroke-width="0.9" opacity="0.55" style="animation:arcSpin 10s linear infinite;transform-origin:100px 100px"/>
+      <!-- Rombo interior (radio 12px) -->
+      <polygon id="orb-rhomb" points="100,88 112,100 100,112 88,100" fill="none" stroke="var(--c-glow)" stroke-width="0.8" opacity="0.7" style="animation:arcSpinRev 7s linear infinite;transform-origin:100px 100px"/>
+      <!-- Hexágono pequeño relleno -->
+      <polygon points="100,93 107,96.5 107,103.5 100,107 93,103.5 93,96.5" fill="var(--c-main)" opacity="0.2" style="animation:arcSpin 4s linear infinite;transform-origin:100px 100px"/>
+      <!-- Pupila -->
+      <circle cx="100" cy="100" r="2.8" fill="var(--c-main)" opacity="0.9" style="filter:drop-shadow(0 0 4px var(--c-main))"/>
+      <circle cx="100" cy="100" r="1.2" fill="#fff" opacity="0.7"/>
+    </svg>
+  </div>
+</div>
 
 <!-- HEADER -->
 <div id="header">
@@ -512,440 +658,20 @@ const getUsuario = () => { try { return JSON.parse(localStorage.getItem(UK)||'nu
 const getMods    = () => { try { return JSON.parse(localStorage.getItem(MK)||'[]') } catch { return [] } }
 
 // ════════════════════════════════════════════════════
-//  AVATAR — Esfera de partículas
+//  AVATAR — ORB V3 (CSS/SVG, no canvas)
 // ════════════════════════════════════════════════════
-const sCanvas  = document.getElementById('lima-sphere')
-const sCtx     = sCanvas.getContext('2d')
 const limaLbl  = document.getElementById('lima-label')
 let avatarState = 'idle'
 let blinkTimer  = null
 let glanceTimer = null
 let blinkLocked = false
 
-// Estado de la onda de voz
-const voiceWave = {
-  amp:    0,      // amplitud actual (lerp)
-  target: 0,      // amplitud objetivo
-  freq:   3.5,    // frecuencia base
-}
-
-// Estado de la esfera
-const sphere = {
-  // Color target por estado
-  colors: {
-    idle:       { r:160, g:32,  b:255 },  // violeta eléctrico Limen
-    listening:  { r:80,  g:140, b:255 },  // azul eléctrico
-    speaking:   { r:200, g:60,  b:255 },  // magenta/violeta
-    processing: { r:0,   g:180, b:255 },  // cian brillante
-    correcto:   { r:0,   g:230, b:120 },  // verde neón
-    error:      { r:255, g:50,  b:80  },  // rojo neón
-  },
-  cur:    { r:160, g:32, b:255 },
-  target: { r:160, g:32, b:255 },
-  radius: 0,
-  targetRadius: 0,
-  pulse: 0,
-  pulseSpeed: 0.018,
-  rotation: 0,
-  energy: 0,
-  targetEnergy: 0,
-}
-
 const IS_MOBILE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
 
-// ── Matrix rain ──
-const MAT_CHARS = '01アイウエオカキクΑΒΓΔΩ∑∆∇∞⌬◈△⊕ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ'
-const matrixCols = []
-function initMatrix() {
-  matrixCols.length = 0
-  const nCols = IS_MOBILE ? 12 : 22
-  for (let i = 0; i < nCols; i++) {
-    matrixCols.push({
-      xOff:  -1.0 + (i / (nCols - 1)) * 2.0,
-      y:     Math.random(),
-      speed: 0.003 + Math.random() * 0.005,
-      chars: Array.from({length: 6}, () => MAT_CHARS[Math.floor(Math.random() * MAT_CHARS.length)]),
-      flipT: Math.floor(Math.random() * 12),
-    })
-  }
-}
-initMatrix()
+// voiceWave stub — wave canvas removed, kept for compatibility
+const voiceWave = { amp:0, target:0, freq:3.5, _t:null }
 
-// ── Arcos de energía ──
-const energyArcs = []
-function spawnArc(baseR, r, g, b) {
-  if (energyArcs.length >= (IS_MOBILE ? 3 : 6)) return
-  energyArcs.push({
-    angle:   Math.random() * Math.PI * 2,
-    prog:    0,
-    speed:   0.025 + Math.random() * 0.035,
-    maxR:    baseR * (0.5 + Math.random() * 0.7),
-    alpha:   0.5 + Math.random() * 0.5,
-  })
-}
-
-// Resize
-function initSphereCanvas() {
-  const dpr = window.devicePixelRatio || 1
-  sCanvas.width  = window.innerWidth  * dpr
-  sCanvas.height = window.innerHeight * dpr
-  sCtx.setTransform(1,0,0,1,0,0)
-  sCtx.scale(dpr, dpr)
-  sphere.radius       = Math.min(window.innerWidth, window.innerHeight) * 0.30
-  sphere.targetRadius = sphere.radius
-}
-window.addEventListener('resize', initSphereCanvas)
-
-// ════════════════════════════════════════════════════
-//  CIRCUIT BACKGROUND
-// ════════════════════════════════════════════════════
-const cbCanvas = document.getElementById('circuit-bg')
-const cbCtx    = cbCanvas ? cbCanvas.getContext('2d') : null
-
-function initCircuitBg() {
-  if (!cbCtx) return
-  const dpr = window.devicePixelRatio || 1
-  cbCanvas.width  = window.innerWidth  * dpr
-  cbCanvas.height = window.innerHeight * dpr
-  cbCtx.setTransform(1,0,0,1,0,0)
-  cbCtx.scale(dpr, dpr)
-  drawCircuitBg()
-}
-window.addEventListener('resize', initCircuitBg)
-
-function drawCircuitBg() {
-  if (!cbCtx) return
-  const W = window.innerWidth, H = window.innerHeight
-  cbCtx.clearRect(0,0,W,H)
-  const gridSize = IS_MOBILE ? 55 : 70
-  const nodes = []
-  // Grid de puntos
-  for (let x = 0; x < W; x += gridSize) {
-    for (let y = 0; y < H; y += gridSize) {
-      const jx = x + (Math.random()-0.5)*16
-      const jy = y + (Math.random()-0.5)*16
-      if (Math.random() < 0.55) nodes.push({x:jx, y:jy})
-    }
-  }
-  // Líneas de circuito horizontales/verticales
-  cbCtx.strokeStyle = 'rgba(0,180,255,0.07)'
-  cbCtx.lineWidth = 1
-  nodes.forEach(n => {
-    if (Math.random() < 0.5) {
-      const len = (Math.random() < 0.5 ? 1 : -1) * (40 + Math.random()*80)
-      cbCtx.beginPath()
-      cbCtx.moveTo(n.x, n.y)
-      cbCtx.lineTo(n.x + len, n.y)
-      cbCtx.stroke()
-    }
-    if (Math.random() < 0.5) {
-      const len = (Math.random() < 0.5 ? 1 : -1) * (30 + Math.random()*60)
-      cbCtx.beginPath()
-      cbCtx.moveTo(n.x, n.y)
-      cbCtx.lineTo(n.x, n.y + len)
-      cbCtx.stroke()
-    }
-    // Nodo
-    if (Math.random() < 0.4) {
-      cbCtx.beginPath()
-      cbCtx.arc(n.x, n.y, 1.5, 0, Math.PI*2)
-      cbCtx.fillStyle = 'rgba(0,200,255,0.18)'
-      cbCtx.fill()
-    }
-  })
-}
-initCircuitBg()
-
-function lerpColor(cur, target, t) {
-  cur.r += (target.r - cur.r) * t
-  cur.g += (target.g - cur.g) * t
-  cur.b += (target.b - cur.b) * t
-}
-
-function drawSphere(ts) {
-  const W  = window.innerWidth
-  const H  = window.innerHeight
-  const cx = W * 0.5
-  const cy = H * 0.43
-
-  sCtx.clearRect(0, 0, W, H)
-
-  // Lerp color
-  lerpColor(sphere.cur, sphere.target, 0.04)
-  const { r, g, b } = sphere.cur
-  const col = `rgb(${r|0},${g|0},${b|0})`
-
-  // Lerp energy
-  sphere.energy += (sphere.targetEnergy - sphere.energy) * 0.05
-
-  // Pulse
-  sphere.pulse += sphere.pulseSpeed
-  const pulseMult = 1 + Math.sin(sphere.pulse) * (0.04 + sphere.energy * 0.12)
-  sphere.rotation += 0.003 + sphere.energy * 0.008
-
-  const baseR = sphere.radius * pulseMult
-
-  // ── Halo suave alrededor de la esfera ──
-  const glowR  = baseR * (3.8 + sphere.energy * 2.0)
-  const glowOuter = sCtx.createRadialGradient(cx, cy, 0, cx, cy, glowR)
-  glowOuter.addColorStop(0,   `rgba(255,255,255,${0.12 + sphere.energy * 0.10})`)
-  glowOuter.addColorStop(0.5, `rgba(255,255,255,${0.04 + sphere.energy * 0.04})`)
-  glowOuter.addColorStop(1,    'rgba(255,255,255,0)')
-  sCtx.beginPath()
-  sCtx.arc(cx, cy, glowR, 0, Math.PI * 2)
-  sCtx.fillStyle = glowOuter
-  sCtx.fill()
-
-  // Esfera blanca central
-  const coreR = 39.0 + sphere.energy * 58.5
-  const coreG = sCtx.createRadialGradient(cx - coreR*0.28, cy - coreR*0.28, coreR*0.05, cx, cy, coreR)
-  coreG.addColorStop(0,   'rgba(255,255,255,1)')
-  coreG.addColorStop(0.5, 'rgba(230,230,255,0.95)')
-  coreG.addColorStop(0.85,'rgba(200,200,240,0.85)')
-  coreG.addColorStop(1,   'rgba(160,160,220,0.7)')
-  sCtx.beginPath()
-  sCtx.arc(cx, cy, coreR, 0, Math.PI * 2)
-  sCtx.fillStyle = coreG
-  sCtx.fill()
-  // Borde suave
-  sCtx.beginPath()
-  sCtx.arc(cx, cy, coreR, 0, Math.PI * 2)
-  sCtx.strokeStyle = 'rgba(255,255,255,0.4)'
-  sCtx.lineWidth = 1.5
-  sCtx.stroke()
-
-  sCtx.restore()
-
-
-
-  // ── Pulsos expansivos al hablar ──
-  if (sphere.energy > 0.2) {
-    for (let p = 0; p < 2; p++) {
-      const pR = baseR * (1.3 + ((ts * 0.001 + p * 0.75) % 1.8))
-      const pA = Math.max(0, 0.5 - pR / (baseR * 3.5)) * sphere.energy
-      sCtx.beginPath()
-      sCtx.arc(cx, cy, pR, 0, Math.PI * 2)
-      sCtx.strokeStyle = p === 0
-        ? `rgba(${r|0},${g|0},${b|0},${pA})`
-        : `rgba(255,255,255,${pA * 0.4})`
-      sCtx.lineWidth = p === 0 ? 1.5 : 0.8
-      sCtx.stroke()
-    }
-  }
-
-  // ── Línea de voz: recta en reposo, onda al hablar ──
-  {
-    voiceWave.amp += (voiceWave.target - voiceWave.amp) * 0.09
-    const wW   = baseR * 1.7
-    const wSegs = IS_MOBILE ? 40 : 90
-
-    sCtx.save()
-    sCtx.translate(cx, cy)
-    sCtx.shadowColor = `rgba(${r|0},${g|0},${b|0},0.8)`
-    sCtx.shadowBlur  = voiceWave.amp > 2 ? 10 : 4
-
-    const wGrad = sCtx.createLinearGradient(-wW/2, 0, wW/2, 0)
-    wGrad.addColorStop(0,   `rgba(${r|0},${g|0},${b|0},0)`)
-    wGrad.addColorStop(0.15,`rgba(${r|0},${g|0},${b|0},0.7)`)
-    wGrad.addColorStop(0.5, `rgba(255,255,255,${0.4 + voiceWave.amp/40})`)
-    wGrad.addColorStop(0.85,`rgba(${r|0},${g|0},${b|0},0.7)`)
-    wGrad.addColorStop(1,   `rgba(${r|0},${g|0},${b|0},0)`)
-
-    // Onda principal
-    sCtx.beginPath()
-    for (let i = 0; i <= wSegs; i++) {
-      const t2  = i / wSegs
-      const x   = -wW/2 + t2 * wW
-      const env = Math.sin(t2 * Math.PI)
-      const spd = ts * 0.005
-      const y   = voiceWave.amp > 0.5
-        ? (Math.sin(t2 * Math.PI * 2 * voiceWave.freq          - spd) * voiceWave.amp
-         + Math.sin(t2 * Math.PI * 2 * voiceWave.freq * 1.618  - spd * 1.4) * voiceWave.amp * 0.4
-         + Math.sin(t2 * Math.PI * 2 * voiceWave.freq * 0.5    - spd * 0.7) * voiceWave.amp * 0.2
-          ) * env
-        : 0
-      i === 0 ? sCtx.moveTo(x, y) : sCtx.lineTo(x, y)
-    }
-    sCtx.strokeStyle = wGrad
-    sCtx.lineWidth   = 2
-    sCtx.stroke()
-
-    // Línea base siempre visible (recta)
-    sCtx.beginPath()
-    sCtx.moveTo(-wW/2, 0)
-    sCtx.lineTo( wW/2, 0)
-    const baseGrad = sCtx.createLinearGradient(-wW/2, 0, wW/2, 0)
-    baseGrad.addColorStop(0,   `rgba(${r|0},${g|0},${b|0},0)`)
-    baseGrad.addColorStop(0.5, `rgba(${r|0},${g|0},${b|0},${0.35 - voiceWave.amp/120})`)
-    baseGrad.addColorStop(1,   `rgba(${r|0},${g|0},${b|0},0)`)
-    sCtx.strokeStyle = baseGrad
-    sCtx.lineWidth   = 1
-    sCtx.stroke()
-
-    sCtx.restore()
-  }
-
-    // ── Patrón geométrico de circuito sobre la esfera ──
-  const nNodes = IS_MOBILE ? 5 : 8
-  const nodeA  = sphere.rotation * 0.7
-  sCtx.save()
-  sCtx.translate(cx, cy)
-
-  // Anillos hexagonales inclinados
-  for (let ri = 0; ri < 3; ri++) {
-    const ringR = baseR * (0.65 + ri * 0.18)
-    const tilt  = (ri * Math.PI / 3) + sphere.rotation * (0.3 + ri * 0.1)
-    const sides = 6 + ri * 2
-    const alpha = (0.55 + sphere.energy * 0.40) * (1 - ri * 0.20)
-    sCtx.beginPath()
-    for (let s = 0; s <= sides; s++) {
-      const a = (s / sides) * Math.PI * 2 + tilt
-      const x = Math.cos(a) * ringR
-      const y = Math.sin(a) * ringR * 0.35
-      s === 0 ? sCtx.moveTo(x, y) : sCtx.lineTo(x, y)
-    }
-    sCtx.strokeStyle = `rgba(0,220,255,${alpha})`
-    sCtx.lineWidth = 1.5
-    sCtx.stroke()
-  }
-
-  // Nodos de circuito en la superficie
-  for (let i = 0; i < nNodes; i++) {
-    const a   = (i / nNodes) * Math.PI * 2 + nodeA
-    const nx  = Math.cos(a) * baseR * 0.88
-    const ny  = Math.sin(a) * baseR * 0.30
-    const sz  = 1.5 + sphere.energy * 1.5
-    const osc = 0.4 + 0.6 * Math.abs(Math.sin(a * 2 + ts * 0.002))
-    // Línea de nodo al siguiente
-    const a2 = ((i + 1) / nNodes) * Math.PI * 2 + nodeA
-    const nx2 = Math.cos(a2) * baseR * 0.88
-    const ny2 = Math.sin(a2) * baseR * 0.30
-    sCtx.beginPath()
-    sCtx.moveTo(nx, ny)
-    sCtx.lineTo(nx2, ny2)
-    sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.55 + sphere.energy * 0.35})`
-    sCtx.lineWidth = 1.2
-    sCtx.stroke()
-    // Punto nodo
-    sCtx.beginPath()
-    sCtx.arc(nx, ny, sz * osc, 0, Math.PI * 2)
-    sCtx.fillStyle = `rgba(255,255,255,${0.85 * osc + sphere.energy * 0.15})`
-    sCtx.fill()
-  }
-
-  // Cruz de ejes del circuito
-  const axLen = baseR * 1.05
-  for (let ax = 0; ax < 4; ax++) {
-    const a   = ax * Math.PI / 2 + sphere.rotation * 0.4
-    const xE  = Math.cos(a) * axLen
-    const yE  = Math.sin(a) * axLen * 0.35
-    sCtx.beginPath()
-    sCtx.moveTo(0, 0)
-    sCtx.lineTo(xE, yE)
-    sCtx.shadowColor = `rgba(${r|0},${g|0},${b|0},0.8)`
-    sCtx.shadowBlur  = 6
-    sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${0.35 + sphere.energy * 0.30})`
-    sCtx.lineWidth = 1.0
-    sCtx.stroke()
-  }
-
-  sCtx.restore()
-
-
-  // ── Arcos de energía ──
-  if (Math.random() < 0.04 + sphere.energy * 0.08) spawnArc(baseR, r, g, b)
-  for (let i = energyArcs.length - 1; i >= 0; i--) {
-    const arc = energyArcs[i]
-    arc.prog += arc.speed
-    if (arc.prog > 1.4) { energyArcs.splice(i, 1); continue }
-    const tail = Math.max(0, arc.prog - 0.35)
-    const x1 = cx + Math.cos(arc.angle) * arc.maxR * tail
-    const y1 = cy + Math.sin(arc.angle) * arc.maxR * tail * 0.4
-    const x2 = cx + Math.cos(arc.angle) * arc.maxR * Math.min(arc.prog, 1)
-    const y2 = cy + Math.sin(arc.angle) * arc.maxR * Math.min(arc.prog, 1) * 0.4
-    const a  = Math.max(0, (1 - arc.prog) * arc.alpha)
-    sCtx.beginPath()
-    sCtx.moveTo(x1, y1)
-    sCtx.lineTo(x2, y2)
-    sCtx.strokeStyle = `rgba(${r|0},${g|0},${b|0},${a})`
-    sCtx.lineWidth = 1.5
-    sCtx.stroke()
-  }
-
-  // ── Matrix rain ──
-  const colH = baseR * 1.6
-  sCtx.textAlign    = 'center'
-  sCtx.textBaseline = 'middle'
-  sCtx.font         = '10px monospace'
-  matrixCols.forEach(col => {
-    col.flipT++
-    if (col.flipT >= 10) {
-      col.flipT = 0
-      const idx = Math.floor(Math.random() * col.chars.length)
-      col.chars[idx] = MAT_CHARS[Math.floor(Math.random() * MAT_CHARS.length)]
-    }
-    col.y += col.speed * (1 + sphere.energy * 0.5)
-    if (col.y > 1.25) {
-      col.y = -0.15
-      col.chars = col.chars.map(() => MAT_CHARS[Math.floor(Math.random() * MAT_CHARS.length)])
-    }
-    const xPos = cx + col.xOff * baseR * 1.85
-    for (let i = 0; i < col.chars.length; i++) {
-      const yPos = cy - colH / 2 + (col.y + i * 0.18) * colH
-      if (yPos < cy - colH * 0.65 || yPos > cy + colH * 0.65) continue
-      const a = i === 0
-        ? 0.95
-        : Math.max(0, 0.55 - i * 0.10)
-      sCtx.globalAlpha = a * (0.7 + sphere.energy * 0.3)
-      sCtx.fillStyle   = i === 0 ? 'rgba(255,255,255,1)' : `rgba(0,210,255,1)`
-      sCtx.fillText(col.chars[i], xPos, yPos)
-    }
-    sCtx.globalAlpha = 1
-  })
-}
-
-let sRafId = null
-function sphereLoop(ts) {
-  sRafId = requestAnimationFrame(sphereLoop)
-  drawSphere(ts)
-}
-
-function setSphereState(state) {
-  const c = sphere.colors[state] || sphere.colors.idle
-  sphere.target = { ...c }
-  switch(state) {
-    case 'idle':
-      sphere.targetEnergy  = 0.30
-      sphere.pulseSpeed    = 0.020
-      voiceWave.target = 0
-      break
-    case 'listening':
-      sphere.targetEnergy  = 0.45
-      sphere.pulseSpeed    = 0.035
-      voiceWave.target = 0
-      break
-    case 'speaking':
-      sphere.targetEnergy  = 0.85
-      sphere.pulseSpeed    = 0.055
-      voiceWave.target = 22
-      break
-    case 'processing':
-      sphere.targetEnergy  = 0.5
-      sphere.pulseSpeed    = 0.04
-      voiceWave.target = 0
-      break
-    case 'correcto':
-      sphere.targetEnergy  = 0.7
-      sphere.pulseSpeed    = 0.05
-      break
-    case 'error':
-      sphere.targetEnergy  = 0.6
-      sphere.pulseSpeed    = 0.06
-      break
-  }
-}
-
-// Compatibilidad: setImg no hace nada (no hay imágenes)
+// Compatibilidad: setImg/setAnim no hacen nada
 function setImg(key) {}
 function setAnim(cls) {}
 
@@ -955,7 +681,6 @@ function setAvatarState(state) {
   clearTimeout(blinkTimer)
   clearTimeout(glanceTimer)
   blinkLocked = false
-  setSphereState(state)
 
   const labels = {
     idle:       'En espera',
@@ -973,18 +698,8 @@ function setAvatarState(state) {
 
   switch(state) {
     case 'idle':
-      setWaveState('idle')
       scheduleBlink()
       scheduleGlance()
-      break
-    case 'listening':
-      setWaveState('listening')
-      break
-    case 'speaking':
-      setWaveState('speaking')
-      break
-    case 'processing':
-      setWaveState('listening')
       break
     case 'correcto':
     case 'error':
@@ -1016,127 +731,49 @@ function scheduleGlance() {
 }
 
 
+// setWaveState — stub for compatibility (wave canvas removed)
+function setWaveState(s) {}
+
 // ════════════════════════════════════════════════════
-//  WAVE CANVAS — Anillos Matrix
+//  ORB V3 — inicialización de partículas
 // ════════════════════════════════════════════════════
-const wCanvas = document.getElementById('wave-canvas')
-const wCtx    = wCanvas.getContext('2d')
-let wState    = 'idle'
-let wAmpS     = 0
-let wAngle    = 0
-let wRafId    = null
-
-const MC = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン' +
-           'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' +
-           '!@#$%&*<>{}[]|/\\~\u00b1\u00a7\u00a5\u20ac\u03a9\u0394\u03a3\u221e\u221a\u03c0\u2260\u2248\u2591\u2592\u2593\u2588'
-
-const MRINGS = [
-  { rOff:48,  n:42,  spd:.0024, dir: 1,  sz:14, baseA:.90 },
-  { rOff:108, n:64,  spd:.0015, dir:-1,  sz:15, baseA:.68 },
-  { rOff:172, n:82,  spd:.0009, dir: 1,  sz:15, baseA:.46 },
-]
-const ringChars  = MRINGS.map(r => Array.from({length:r.n}, ()=> MC[Math.floor(Math.random()*MC.length)]))
-const ringAngles = [0, Math.PI*.4, Math.PI*.8]
-
-setInterval(() => {
-  ringChars.forEach((chars) => {
-    const n = Math.ceil(chars.length * .04)
-    for (let i = 0; i < n; i++) {
-      chars[Math.floor(Math.random()*chars.length)] = MC[Math.floor(Math.random()*MC.length)]
-    }
-  })
-}, 300)
-
-function initWaveCanvas() {
-  const dpr = window.devicePixelRatio || 1
-  wCanvas.width  = window.innerWidth  * dpr
-  wCanvas.height = window.innerHeight * dpr
-  wCtx.setTransform(1,0,0,1,0,0)
-  wCtx.scale(dpr, dpr)
+function initOrb() {
+  const container = document.getElementById('orb-particles');
+  if (!container) return;
+  const orbitFactors = [0.5,0.75,1.1,1.6,2.2,3.0,4.0,5.2,6.6,0.6,0.9,1.4,1.9,2.7,3.6,4.8,6.0,7.5];
+  const durations   = [3,4,5,7,9,12,16,20,25,3.5,4.5,6,8,10,14,18,22,28];
+  const sizes       = [4.5,4.5,4.5,3.5,3.5,3.5,3,3,3,4.5,4.5,3.5,3.5,3,3,2.5,2.5,2.5];
+  const colors      = ['#fff','var(--c-glow)','var(--c-main)'];
+  orbitFactors.forEach((f,i) => {
+    const r = Math.round(f * 100);
+    const sz = sizes[i] || 3;
+    const col = colors[i % 3];
+    const delay = -(Math.random() * durations[i]);
+    const div = document.createElement('div');
+    div.className = 'particle';
+    div.style.cssText = `--r:${r}px;--dur:${durations[i]}s;--delay:${delay.toFixed(2)}s;--sz:${sz}px;--dot-color:${col}`;
+    div.innerHTML = `<div class="particle-dot"></div><div class="particle-dot2"></div>`;
+    container.appendChild(div);
+  });
 }
 
-function setWaveState(s) { wState = s; if(!wRafId) wRafId = requestAnimationFrame(drawWave) }
-
-function simAmp() {
-  if (wState === 'idle')      return 0.05 + 0.03  * Math.sin(Date.now() * .001)
-  if (wState === 'listening') return 0.28 + 0.18  * Math.sin(Date.now() * .008)
-  if (wState === 'speaking') {
-    const t = Date.now() * .003
-    return 0.42 + 0.40 * Math.abs(Math.sin(t) * Math.sin(t*2.3) * Math.sin(t*.7))
+// ════════════════════════════════════════════════════
+//  LIMA STATE — color class management
+// ════════════════════════════════════════════════════
+function setLimaState(state) {
+  // Sistema principal: data-lima-state en html tag (cambia todos los CSS vars)
+  document.documentElement.dataset.limaState = state || 'violet';
+  // Compatibilidad: también actualiza body classes
+  document.body.classList.remove('lima-red','lima-green','lima-amber','lima-active');
+  if (state === 'red')   { document.body.classList.add('lima-red','lima-active'); }
+  if (state === 'green') { document.body.classList.add('lima-green','lima-active'); }
+  if (state === 'amber') { document.body.classList.add('lima-amber','lima-active'); }
+  // Actualizar label de estado del orbe
+  const lbl = document.getElementById('lima-state-lbl');
+  if (lbl) {
+    const labels = { violet:'◈ procesando', red:'⚠ alerta activa', green:'✓ sistema OK', amber:'◈ hogar activo' };
+    lbl.textContent = labels[state] || '◈ procesando';
   }
-  return 0
-}
-
-function drawWave(ts) {
-  wRafId = requestAnimationFrame(drawWave)
-  const W = window.innerWidth, H = window.innerHeight
-  wCtx.clearRect(0, 0, W, H)
-
-  const cx    = W * .5
-  const cy    = H * .43
-  const baseR = Math.min(W * .18, H * .15)
-
-  const target = simAmp()
-  wAmpS += (target - wAmpS) * .06
-  wAngle += wState === 'speaking' ? .006 : .0018
-
-  // Glow de fondo
-  const gRad = baseR + 180 + wAmpS * 80
-  const glow = wCtx.createRadialGradient(cx, cy, baseR*.5, cx, cy, gRad)
-  glow.addColorStop(0, 'rgba(0,180,255,' + (.08 + wAmpS*.12) + ')')
-  glow.addColorStop(.5,'rgba(0,60,140,' + (.04 + wAmpS*.05) + ')')
-  glow.addColorStop(1, 'rgba(0,180,255,0)')
-  wCtx.beginPath(); wCtx.arc(cx,cy,gRad,0,Math.PI*2)
-  wCtx.fillStyle = glow; wCtx.fill()
-
-  // Ring central — dashes
-  const r1   = baseR + 16 + wAmpS * 26
-  const nD   = 36
-  const dAlpha = wState === 'idle' ? .45 : .75
-  for (let i = 0; i < nD; i++) {
-    const a   = (i/nD)*Math.PI*2 + wAngle
-    const len = wState === 'speaking'
-      ? 10 + wAmpS * 32 * Math.abs(Math.sin(i*.7 + ts*.0012))
-      : 6  + wAmpS * 12
-    wCtx.beginPath()
-    wCtx.moveTo(cx + Math.cos(a)*r1,       cy + Math.sin(a)*r1)
-    wCtx.lineTo(cx + Math.cos(a)*(r1+len), cy + Math.sin(a)*(r1+len))
-    const grd = wCtx.createLinearGradient(
-      cx + Math.cos(a)*r1, cy + Math.sin(a)*r1,
-      cx + Math.cos(a)*(r1+len), cy + Math.sin(a)*(r1+len)
-    )
-    grd.addColorStop(0, 'rgba(0,180,255,' + (dAlpha*.5) + ')')
-    grd.addColorStop(1, 'rgba(100,220,255,' + dAlpha + ')')
-    wCtx.strokeStyle = grd
-    wCtx.lineWidth   = 2.5
-    wCtx.stroke()
-  }
-
-  // Anillos de caracteres Matrix
-  MRINGS.forEach((ring, ri) => {
-    ringAngles[ri] += ring.spd * ring.dir * (1 + wAmpS * 2)
-    const chars = ringChars[ri]
-    const r = baseR + ring.rOff + wAmpS * 30
-    wCtx.font = ring.sz + 'px monospace'
-    for (let i = 0; i < ring.n; i++) {
-      const a   = (i / ring.n) * Math.PI * 2 + ringAngles[ri]
-      const x   = cx + Math.cos(a) * r
-      const y   = cy + Math.sin(a) * r
-      const osc = 0.5 + 0.5 * Math.sin(a * 3 + Date.now() * .0008)
-      const alpha = ring.baseA * osc * (wState === 'idle' ? .6 : 1)
-      const ringColors = ['160,32,255', '0,210,255', '200,60,255']
-      wCtx.shadowColor = 'rgba(' + ringColors[ri] + ',0.8)'
-      wCtx.shadowBlur  = ri === 0 ? 8 : 4
-      wCtx.fillStyle   = 'rgba(' + ringColors[ri] + ',' + alpha + ')'
-      wCtx.textAlign   = 'center'
-      wCtx.textBaseline= 'middle'
-      wCtx.save()
-      wCtx.translate(x, y)
-      wCtx.rotate(a + Math.PI/2)
-      wCtx.fillText(chars[i], 0, 0)
-      wCtx.restore()
-    }
-  })
 }
 
 // ════════════════════════════════════════════════════
@@ -1153,6 +790,14 @@ function setEstado(estado, label) {
     else if (estado === 'panico')    { aS.classList.add('pan'); aS.textContent = '⚠ PÁNICO' }
     else { aS.textContent = '—' }
   }
+  // Update orb state color
+  if (estado === 'armado')    setLimaState('red')
+  else if (estado === 'desarmado') {
+    setLimaState('green')
+    setTimeout(() => setLimaState('violet'), 3000)
+  }
+  else if (estado === 'panico') setLimaState('red')
+  else setLimaState('violet')
 }
 
 // ════════════════════════════════════════════════════
@@ -1394,6 +1039,9 @@ function _abrirModulo(titulo) {
 
 function cerrarModulo() {
   document.getElementById('modulo-panel').classList.remove('show')
+  // Restore orb to current alarm state color (remove amber if was hogar/edificio)
+  const b = document.body
+  if (b.classList.contains('lima-amber')) setLimaState('violet')
 }
 
 // ── MI ALARMA ─────────────────────────────────────
@@ -1679,9 +1327,9 @@ async function confirmarPanico(tipo) {
 function accionBtn(tipo) {
   switch(tipo) {
     case 'alarma':   abrirModuloAlarma(); break
-    case 'hogar':    abrirModuloHogar(); break
+    case 'hogar':    setLimaState('amber'); abrirModuloHogar(); break
     case 'gps':      abrirModuloGPS(); break
-    case 'edificio': abrirModuloEdificio(); break
+    case 'edificio': setLimaState('amber'); abrirModuloEdificio(); break
     default: { const cmd = BTN_CMDS[tipo]; if(cmd){ inp.value=cmd; enviar() } }
   }
 }
@@ -2014,11 +1662,8 @@ function iniciar() {
   if (ttsEnabled) { btnTts.className='on'; btnTts.textContent='🔊 VOZ' }
   actualizarHora()
   setInterval(actualizarHora, 15000)
-  initWaveCanvas()
-  initSphereCanvas()
+  initOrb()
   setAvatarState('idle')
-  wRafId = requestAnimationFrame(drawWave)
-  sphereLoop(0)
   cargarEstado()
   setInterval(cargarEstado, 30000)
   actualizarBtnMic()
@@ -2054,7 +1699,6 @@ inp.addEventListener('input', function() {
 inp.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviar()} })
 document.getElementById('l-pass').addEventListener('keydown',  e=>{ if(e.key==='Enter') hacerLogin() })
 document.getElementById('l-email').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('l-pass').focus() })
-window.addEventListener('resize', initWaveCanvas)
 
 // Auto-arranque si hay token
 if(getToken()) {
