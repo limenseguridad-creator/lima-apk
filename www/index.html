@@ -1662,18 +1662,49 @@ async function hacerLogin() {
   const btn   = document.getElementById('btn-login')
   err.textContent = ''
   if(!email||!pass) { err.textContent='Completá email y contraseña'; return }
-  btn.disabled=true; btn.textContent='VERIFICANDO...'
+  btn.disabled=true
+  const intentarLogin = async (intento) => {
+    btn.textContent = intento === 1 ? 'VERIFICANDO...' : 'REINTENTANDO...'
+    const ctrl = new AbortController()
+    const tid  = setTimeout(() => ctrl.abort(), 8000)
+    try {
+      const r = await fetch(API_BASE + '/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass }),
+        signal: ctrl.signal
+      })
+      clearTimeout(tid)
+      const d = await r.json()
+      if (!r.ok) { err.textContent = d.error || 'Email o contraseña incorrectos'; return false }
+      localStorage.setItem(TK, d.token)
+      localStorage.setItem(UK, JSON.stringify(d.usuario))
+      localStorage.setItem(MK, JSON.stringify(d.modulos || []))
+      document.getElementById('login').classList.add('hide')
+      iniciar()
+      return true
+    } catch (e) {
+      clearTimeout(tid)
+      if (e.name === 'AbortError') {
+        err.textContent = intento < 2 ? 'Sin respuesta, reintentando...' : 'Servidor no responde. Verificá tu conexión.'
+      } else if (!navigator.onLine) {
+        err.textContent = 'Sin conexión a internet.'
+        return false  // no reintentar si no hay red
+      } else {
+        err.textContent = intento < 2 ? 'Error de red, reintentando...' : 'No se pudo conectar al servidor.'
+      }
+      return false
+    }
+  }
   try {
-    const r = await fetch(API_BASE + '/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})})
-    const d = await r.json()
-    if(!r.ok) { err.textContent=d.error||'Error de acceso'; return }
-    localStorage.setItem(TK, d.token)
-    localStorage.setItem(UK, JSON.stringify(d.usuario))
-    localStorage.setItem(MK, JSON.stringify(d.modulos||[]))
-    document.getElementById('login').classList.add('hide')
-    iniciar()
-  } catch { err.textContent='Error de conexión' }
-  finally { btn.disabled=false; btn.textContent='INGRESAR' }
+    const ok = await intentarLogin(1)
+    if (!ok && err.textContent.includes('reintentando')) {
+      await new Promise(r => setTimeout(r, 2500))
+      await intentarLogin(2)
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = 'INGRESAR'
+  }
 }
 function logout() { localStorage.clear(); location.reload() }
 
