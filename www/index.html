@@ -99,6 +99,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
   z-index:20;display:flex;flex-direction:column;
   justify-content:space-evenly;
   padding:72px 0 195px;
+  pointer-events:none; /* allow header clicks through the transparent col area */
 }
 #side-left{left:6px}
 #side-right{right:6px;align-items:flex-end}
@@ -113,6 +114,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
   transition:all .22s;user-select:none;
   -webkit-tap-highlight-color:transparent;
   box-shadow:0 0 8px rgba(155,48,255,.08),inset 0 0 12px rgba(155,48,255,.04);
+  pointer-events:auto; /* re-enable pointer events on actual buttons */
 }
 .sbtn:active{transform:scale(.88) !important;background:var(--c-dim)}
 .sbtn .ico{font-size:22px;line-height:1;filter:drop-shadow(0 0 4px var(--c-dim))}
@@ -339,7 +341,7 @@ body.st-bloqueado #estado-txt{color:var(--cyan)}
 .login-avatar{display:none}
 
 /* ── ORB SYSTEM V3 ── */
-#bg-rings{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:visible}
+#bg-rings{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:visible;width:100%;height:100%}
 #lima-orb-wrap{position:fixed;inset:0;z-index:1;pointer-events:none;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
 #bg-state-glow{position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,var(--c-dim) 0%,transparent 60%);transition:all 0.8s ease;pointer-events:none}
 #orb-shield-svg{position:absolute;width:260px;height:286px;opacity:1;pointer-events:none;transition:all 0.6s ease}
@@ -780,7 +782,9 @@ function setLimaState(state) {
 //  ESTADO SISTEMA
 // ════════════════════════════════════════════════════
 function setEstado(estado, label) {
-  document.body.className = 'st-' + estado
+  // Preserve non-alarm body classes (lima-red, lima-green, etc.) — only update st-* class
+  document.body.classList.remove('st-armado','st-desarmado','st-panico','st-bloqueado')
+  document.body.classList.add('st-' + estado)
   document.getElementById('estado-txt').textContent = label.toUpperCase()
   const aS = document.getElementById('alarma-status')
   if (aS) {
@@ -790,13 +794,13 @@ function setEstado(estado, label) {
     else if (estado === 'panico')    { aS.classList.add('pan'); aS.textContent = '⚠ PÁNICO' }
     else { aS.textContent = '—' }
   }
-  // Update orb state color
-  if (estado === 'armado')    setLimaState('red')
+  // Update orb state color — armado (standby) keeps violet, only active events go red
+  if (estado === 'panico') setLimaState('red')
   else if (estado === 'desarmado') {
     setLimaState('green')
     setTimeout(() => setLimaState('violet'), 3000)
   }
-  else if (estado === 'panico') setLimaState('red')
+  else if (estado === 'armado') { /* keep current orb color — standby armed is not an emergency */ }
   else setLimaState('violet')
 }
 
@@ -1504,6 +1508,8 @@ async function iniciarEscucha() {
   if (!navigator.mediaDevices?.getUserMedia) {
     toast('Micrófono no disponible', 't-err'); return
   }
+  // Release any lingering stream from previous recording before requesting new one
+  if (micStream) { try { micStream.getTracks().forEach(t => t.stop()) } catch {} ; micStream = null }
   try {
     const stream   = await navigator.mediaDevices.getUserMedia({ audio: true })
     micStream      = stream
@@ -1528,6 +1534,7 @@ async function iniciarEscucha() {
       grabando = false
       detenerSilenceDetector()
       stream.getTracks().forEach(t => t.stop())
+      micStream = null
       actualizarBtnMic()
 
       const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' })
@@ -1576,9 +1583,14 @@ async function iniciarEscucha() {
       vozContinua = false
       actualizarBtnMic()
       toast('Sin micrófono — voz desactivada', 't-err')
+    } else if (e.name === 'NotReadableError') {
+      // Mic is busy (in use by another app or hardware not released yet)
+      vozContinua = false
+      actualizarBtnMic()
+      toast('Micrófono ocupado — cerrá otras apps y reintentá', 't-err')
     } else {
       toast('Mic error: ' + e.name, 't-err')
-      if (vozContinua) setTimeout(iniciarEscucha, 3000)
+      if (vozContinua) setTimeout(iniciarEscucha, 5000)
     }
   }
 }
