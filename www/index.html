@@ -1314,6 +1314,19 @@ async function confirmarPanico(tipo) {
       `
       setEstado('panico','PÁNICO'); beepPanic()
       if (navigator.vibrate) navigator.vibrate([300,100,300,100,300])
+      // Auto-normalizar: re-consultar el estado real del panel luego de 90s
+      setTimeout(async () => {
+        try {
+          const hdr = { Authorization: 'Bearer ' + (getToken() || '') }
+          const r   = await fetch(API_BASE + '/api/modulo/alarma', { headers: hdr })
+          const d   = await r.json()
+          if (d.ok) {
+            if      (d.estado === 'armado')    setEstado('armado','Armado')
+            else if (d.estado === 'desarmado') setEstado('desarmado','Desarmado')
+            else                               setEstado('armado','Armado') // fallback
+          }
+        } catch {}
+      }, 90000)
     } else {
       document.getElementById('modulo-body').innerHTML = `<div class="mod-error">${d.error||'No se pudo enviar la alerta'}</div>`
       beepErr()
