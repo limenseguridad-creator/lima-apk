@@ -1789,6 +1789,23 @@ inp.addEventListener('input', function() {
 })
 inp.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviar()} })
 document.getElementById('l-pass').addEventListener('keydown',  e=>{ if(e.key==='Enter') hacerLogin() })
+
+// ── WIDGET ACTIONS (llamadas desde Android native via evaluateJavascript) ──
+window.limaWidgetAction = function(accion) {
+  if (!getToken()) { hacerLogin(); return }  // sin sesión → ir al login
+  if (accion === 'ayuda') {
+    // Asegurarse de que la pantalla principal esté visible
+    document.getElementById('login').classList.add('hide')
+    accionPanico()  // abre el selector de tipo de pánico/ayuda
+  } else if (accion === 'escuchar') {
+    document.getElementById('login').classList.add('hide')
+    if (!vozContinua) {
+      vozContinua = true
+      actualizarBtnMic()
+      iniciarEscucha()
+    }
+  }
+}
 document.getElementById('l-email').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('l-pass').focus() })
 
 // Auto-arranque si hay token
