@@ -585,7 +585,7 @@ body.lima-active .orb-ripple:nth-child(3){animation-duration:2.1s}
     </div>
   </div>
   <div id="input-bar">
-    <button class="ibtn" id="btn-mic-in" onpointerdown="btnMicPointerDown()" onpointerup="btnMicPointerUp()" onpointerleave="btnMicPointerUp()" style="font-size:10px;padding:0 6px;min-width:72px;color:var(--pL);border-color:rgba(139,92,246,.5)">🎙 Voz ON</button>
+    <button class="ibtn" id="btn-mic-in" onclick="toggleMic()" style="font-size:13px;padding:0 14px;min-width:96px;color:var(--pL);border-color:rgba(139,92,246,.5);font-weight:700">🎙 HABLAR</button>
     <textarea id="inp" rows="1" placeholder="Hablá con LIMA..."></textarea>
     <button class="ibtn" id="btn-send" onclick="enviar()">➤</button>
   </div>
@@ -1359,7 +1359,7 @@ function hablarRespuesta(texto) {
   if (!ttsEnabled || !texto) {
     setAvatarState('idle')
     setWaveState('idle')
-    if (vozContinua) setTimeout(iniciarEscucha, 600)
+    actualizarBtnMic()
     return
   }
   window.speechSynthesis.cancel()
@@ -1384,24 +1384,23 @@ function hablarRespuesta(texto) {
   utter.onend = () => {
     setAvatarState('idle')
     setWaveState('idle')
-    if (vozContinua) setTimeout(iniciarEscucha, 1800)
+    actualizarBtnMic()
   }
   utter.onerror = () => {
     setAvatarState('idle')
     setWaveState('idle')
-    if (vozContinua) setTimeout(iniciarEscucha, 2000)
+    actualizarBtnMic()
   }
   window.speechSynthesis.speak(utter)
 }
 
 // ════════════════════════════════════════════════════
-//  VOZ — MediaRecorder → Groq Whisper + Modo continuo con detección de silencio
+//  VOZ — MediaRecorder → Groq Whisper
 // ════════════════════════════════════════════════════
 let mediaRecorder  = null
 let audioChunks    = []
 let grabando       = false
 let ttsEnabled     = true       // TTS ON por defecto
-let vozContinua    = false      // OFF por defecto — usuario activa cuando quiere
 let silenceTimer   = null
 let audioCtx       = null
 let analyser       = null
@@ -1410,17 +1409,20 @@ let micStream      = null
 function actualizarBtnMic() {
   const btn = document.getElementById('btn-mic-in')
   if (!btn) return
-  if (vozContinua) {
-    btn.textContent = grabando ? '⏹ Escuchando...' : '🎙 Voz ON'
-    btn.title = 'Click para hablar / Mantener para desactivar voz continua'
-    btn.style.color = grabando ? 'var(--red)' : 'var(--pL)'
-    btn.style.borderColor = grabando ? 'var(--red)' : 'rgba(139,92,246,.5)'
+  if (grabando) {
+    btn.textContent = '⏹ Escuchando...'
+    btn.style.color = 'var(--red)'
+    btn.style.borderColor = 'var(--red)'
   } else {
-    btn.textContent = '🎙 Voz OFF'
-    btn.title = 'Voz continua desactivada — click para activar'
-    btn.style.color = 'var(--muted)'
-    btn.style.borderColor = 'rgba(139,92,246,.2)'
+    btn.textContent = '🎙 HABLAR'
+    btn.style.color = 'var(--pL)'
+    btn.style.borderColor = 'rgba(139,92,246,.5)'
   }
+}
+
+function toggleMic() {
+  if (grabando) mediaRecorder?.stop()
+  else iniciarEscucha()
 }
 
 
@@ -1438,39 +1440,6 @@ function toggleTTS() {
   }
 }
 
-function toggleVozContinua() {
-  vozContinua = !vozContinua
-  actualizarBtnMic()
-  if (vozContinua) {
-    toast('Voz continua activada', 't-ok')
-    setTimeout(iniciarEscucha, 600)
-  } else {
-    toast('Voz continua desactivada', 't-warn')
-    if (grabando) mediaRecorder?.stop()
-    detenerSilenceDetector()
-  }
-}
-
-// Click corto = grabar manual / click largo = toggle modo continuo
-let btnMicPressTimer = null
-function btnMicPointerDown() {
-  btnMicPressTimer = setTimeout(() => {
-    btnMicPressTimer = null
-    toggleVozContinua()
-  }, 600)
-}
-function btnMicPointerUp() {
-  if (btnMicPressTimer) {
-    clearTimeout(btnMicPressTimer)
-    btnMicPressTimer = null
-    // Click corto
-    if (grabando) {
-      mediaRecorder?.stop()
-    } else {
-      iniciarEscucha()
-    }
-  }
-}
 
 function detenerSilenceDetector() {
   if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null }
@@ -1556,7 +1525,7 @@ async function iniciarEscucha(retryCount = 0) {
       if (blob.size < 5000 || recDuration < 1200) {
         // Audio demasiado corto o vacío — evita alucinaciones de Whisper
         setAvatarState('idle')
-        if (vozContinua) setTimeout(iniciarEscucha, 2000) // 2s for Android to fully release mic
+        actualizarBtnMic()
         return
       }
 
@@ -1574,14 +1543,13 @@ async function iniciarEscucha(retryCount = 0) {
         if (d.texto?.trim()) {
           inp.value = d.texto.trim()
           enviar()
-          // El mic se reactiva en hablarRespuesta.onend
         } else {
           setAvatarState('idle')
-          if (vozContinua) setTimeout(iniciarEscucha, 2000) // 2s for Android mic release
+          actualizarBtnMic()
         }
       } catch {
         setAvatarState('idle')
-        if (vozContinua) setTimeout(iniciarEscucha, 2000)
+        actualizarBtnMic()
         toast('Error al procesar audio', 't-err')
       }
     }
@@ -1590,13 +1558,11 @@ async function iniciarEscucha(retryCount = 0) {
   } catch (e) {
     console.error('[MIC] Error:', e.name, e.message)
     if (e.name === 'NotAllowedError') {
-      vozContinua = false
       actualizarBtnMic()
       toast('Permiso de micrófono denegado', 't-err')
     } else if (e.name === 'NotFoundError') {
-      vozContinua = false
       actualizarBtnMic()
-      toast('Sin micrófono — voz desactivada', 't-err')
+      toast('Sin micrófono', 't-err')
     } else if (e.name === 'NotReadableError') {
       // Mic is busy — auto-retry up to 3 times with increasing delay before showing error
       if (retryCount < 3) {
@@ -1605,7 +1571,6 @@ async function iniciarEscucha(retryCount = 0) {
         setTimeout(() => iniciarEscucha(retryCount + 1), delay)
         return
       }
-      vozContinua = false
       actualizarBtnMic()
       // Show message with retry button in chat (only after all retries failed)
       document.getElementById('chat-empty').style.display = 'none'
@@ -1617,8 +1582,8 @@ async function iniciarEscucha(retryCount = 0) {
         '</div></div>'
       document.getElementById('chat').insertBefore(wrap, document.getElementById('typing'))
     } else {
+      actualizarBtnMic()
       toast('Mic error: ' + e.name, 't-err')
-      if (vozContinua) setTimeout(iniciarEscucha, 5000)
     }
   }
 }
@@ -1629,17 +1594,10 @@ function reintentarMic(btn) {
   // Ensure previous stream is fully released before retrying
   if (micStream) { try { micStream.getTracks().forEach(t => t.stop()) } catch {} ; micStream = null }
   setTimeout(() => {
-    vozContinua = true
-    actualizarBtnMic()
     iniciarEscucha()
   }, 1200)
 }
 
-// Compatibilidad: toggleVoz sigue funcionando para llamadas existentes
-function toggleVoz() {
-  if (grabando) mediaRecorder?.stop()
-  else iniciarEscucha()
-}
 
 // ════════════════════════════════════════════════════
 //  PIN
@@ -1693,6 +1651,7 @@ async function hacerLogin() {
       localStorage.setItem(TK, d.token)
       localStorage.setItem(UK, JSON.stringify(d.usuario))
       localStorage.setItem(MK, JSON.stringify(d.modulos || []))
+      if (window.LimaAndroid) window.LimaAndroid.saveToken(d.token)
       document.getElementById('login').classList.add('hide')
       iniciar()
       return true
@@ -1763,15 +1722,11 @@ function iniciar() {
         utter.onstart = () => { setAvatarState('speaking'); setWaveState('speaking') }
         utter.onend = () => {
           setAvatarState('idle'); setWaveState('idle')
-          if (vozContinua) setTimeout(iniciarEscucha, 2500)
+          actualizarBtnMic()
         }
         window.speechSynthesis.speak(utter)
-      } else if (vozContinua) {
-        setTimeout(iniciarEscucha, 1200)
       }
     }, 800)
-  } else if (vozContinua) {
-    setTimeout(iniciarEscucha, 1200)
   }
 }
 
@@ -1799,11 +1754,7 @@ window.limaWidgetAction = function(accion) {
     accionPanico()  // abre el selector de tipo de pánico/ayuda
   } else if (accion === 'escuchar') {
     document.getElementById('login').classList.add('hide')
-    if (!vozContinua) {
-      vozContinua = true
-      actualizarBtnMic()
-      iniciarEscucha()
-    }
+    if (!grabando) iniciarEscucha()
   }
 }
 document.getElementById('l-email').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('l-pass').focus() })
