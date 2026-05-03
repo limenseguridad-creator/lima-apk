@@ -1751,7 +1751,7 @@ window.limaWidgetAction = function(accion) {
   if (accion === 'ayuda') {
     // Asegurarse de que la pantalla principal esté visible
     document.getElementById('login').classList.add('hide')
-    accionPanico()  // abre el selector de tipo de pánico/ayuda
+    seleccionarPanico('ayuda')  // va directo a la confirmación
   } else if (accion === 'escuchar') {
     document.getElementById('login').classList.add('hide')
     if (!grabando) iniciarEscucha()
