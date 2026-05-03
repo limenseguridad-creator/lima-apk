@@ -1728,6 +1728,13 @@ function iniciar() {
       }
     }, 800)
   }
+  // Pending widget action (cold start from widget)
+  setTimeout(() => {
+    if (window.LimaAndroid) {
+      const pa = LimaAndroid.getPendingWidgetAction()
+      if (pa) window.limaWidgetAction(pa)
+    }
+  }, 300)
 }
 
 // Release mic when app goes to background (prevents "NotReadableError" on resume)
