@@ -1421,8 +1421,18 @@ function actualizarBtnMic() {
 }
 
 function toggleMic() {
-  if (grabando) mediaRecorder?.stop()
-  else iniciarEscucha()
+  if (grabando) {
+    mediaRecorder?.stop()
+  } else {
+    // Feedback visual inmediato antes del await getUserMedia
+    const btn = document.getElementById('btn-mic-in')
+    if (btn) {
+      btn.textContent = '⏳ Iniciando...'
+      btn.style.color = 'var(--pL)'
+      btn.style.borderColor = 'rgba(139,92,246,.5)'
+    }
+    iniciarEscucha()
+  }
 }
 
 
@@ -1489,7 +1499,9 @@ function iniciarSilenceDetector(stream) {
 async function iniciarEscucha(retryCount = 0) {
   if (grabando) return
   if (!navigator.mediaDevices?.getUserMedia) {
-    toast('Micrófono no disponible', 't-err'); return
+    actualizarBtnMic()
+    toast('Micrófono no disponible en este dispositivo', 't-err')
+    return
   }
   // Release any lingering stream from previous recording before requesting new one
   if (micStream) { try { micStream.getTracks().forEach(t => t.stop()) } catch {} ; micStream = null }
