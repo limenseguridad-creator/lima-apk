@@ -80,6 +80,24 @@ jobs:
           MANIFEST=android/app/src/main/AndroidManifest.xml
           sed -i 's|</application>|    <receiver android:name=".LimaWidgetAyuda" android:exported="true">\n      <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>\n      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_ayuda_info"/>\n    </receiver>\n    <receiver android:name=".LimaWidgetEscuchar" android:exported="true">\n      <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>\n      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_escuchar_info"/>\n    </receiver>\n    <activity android:name=".LimaVoiceActivity" android:exported="false" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:launchMode="singleTop"/>\n  </application>|' $MANIFEST
 
+      - name: Customize splash screen (black background)
+        run: |
+          RES=android/app/src/main/res
+          # Android < 12: styles.xml — cambiar fondo de splash a negro
+          sed -i 's|<item name="android:background">@drawable/splash</item>|<item name="android:background">@android:color/black</item>|g' $RES/values/styles.xml || true
+          # Android 12+ (API 31): splash screen del sistema — fondo negro, ícono Limen
+          mkdir -p $RES/values-v31
+          cat > $RES/values-v31/styles.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+                  <item name="windowSplashScreenBackground">#000000</item>
+                  <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+                  <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+              </style>
+          </resources>
+          EOF
+
       - name: Set app icon
         run: |
           sudo apt-get install -y imagemagick 2>/dev/null

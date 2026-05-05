@@ -1503,8 +1503,14 @@ async function iniciarEscucha(retryCount = 0) {
     toast('Micrófono no disponible en este dispositivo', 't-err')
     return
   }
-  // Release any lingering stream from previous recording before requesting new one
-  if (micStream) { try { micStream.getTracks().forEach(t => t.stop()) } catch {} ; micStream = null }
+  // Release any lingering stream and AudioContext before requesting new one
+  // On Android, hardware doesn't release instantly — need a brief delay after stop()
+  if (audioCtx) { try { audioCtx.close() } catch {} ; audioCtx = null ; analyser = null }
+  if (micStream) {
+    try { micStream.getTracks().forEach(t => t.stop()) } catch {}
+    micStream = null
+    await new Promise(r => setTimeout(r, 600))  // esperar liberación del hardware en Android
+  }
   try {
     const stream   = await navigator.mediaDevices.getUserMedia({ audio: true })
     micStream      = stream
@@ -1752,8 +1758,10 @@ function iniciar() {
 // Release mic when app goes to background (prevents "NotReadableError" on resume)
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
+    detenerSilenceDetector()  // cierra AudioContext para liberar hardware en Android
     if (grabando && mediaRecorder) { try { mediaRecorder.stop() } catch {} }
     if (micStream) { try { micStream.getTracks().forEach(t => t.stop()) } catch {} ; micStream = null }
+    grabando = false
   }
 })
 
