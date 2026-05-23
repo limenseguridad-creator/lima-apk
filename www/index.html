@@ -425,6 +425,7 @@ body.lima-active .orb-ripple:nth-child(3){animation-duration:2.1s}
 @keyframes arcSpinRev{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}
 @keyframes glowPulse{0%,100%{opacity:0.3}50%{opacity:0.8}}
 </style>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
 
@@ -1390,7 +1391,7 @@ async function confirmarAyuda() {
             body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude })
           })
         } catch {}
-      }, 30000)
+      }, 15000)
       _mostrarEstadoAyuda()
     } else {
       document.getElementById('modulo-body').innerHTML = '<div class="mod-error">' + (d.error||'No se pudo enviar el pedido') + '</div>'
@@ -1430,6 +1431,98 @@ async function cancelarAyuda() {
     '<div style="font-size:15px;font-weight:700;color:var(--green)">Asistencia cancelada</div>' +
     '<div style="font-size:12px;color:var(--muted)">El operador fue informado de que estás bien.</div>' +
     '<button class="mod-btn secondary" onclick="cerrarModulo()" style="margin-top:4px;width:100%">Cerrar</button></div>'
+}
+
+// ════════════════════════════════════════════════════
+//  VOIP — COMUNICACIÓN DIRECTA CON RECEPTOR
+// ════════════════════════════════════════════════════
+let _voipSocket   = null
+let _voipPc       = null
+let _voipStream   = null
+let _voipActiva   = false
+
+function voipConectar() {
+  const token = getToken()
+  if (!token || _voipSocket) return
+  _voipSocket = io('https://limaguard.ldtp.com', {
+    path: '/voip',
+    auth: { token },
+    transports: ['websocket'],
+    reconnection: true,
+    reconnectionDelay: 3000
+  })
+  _voipSocket.on('connect', () => {
+    _voipSocket.emit('registrar_apk', token)
+  })
+  _voipSocket.on('voip_llamada', voipAtender)
+  _voipSocket.on('voip_ice',    (d) => {
+    if (_voipPc && d.candidate) {
+      try { _voipPc.addIceCandidate(new RTCIceCandidate(d.candidate)) } catch {}
+    }
+  })
+  _voipSocket.on('voip_colgar', voipColgar)
+}
+
+function voipDesconectar() {
+  if (_voipSocket) { _voipSocket.disconnect(); _voipSocket = null }
+  voipColgar()
+}
+
+async function voipAtender(data) {
+  if (_voipActiva) return  // ya en llamada
+  _voipActiva = true
+  _voipMostrarUI()
+  try {
+    _voipStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    _voipPc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    })
+    _voipStream.getTracks().forEach(t => _voipPc.addTrack(t, _voipStream))
+    _voipPc.onicecandidate = (e) => {
+      if (e.candidate && _voipSocket) {
+        _voipSocket.emit('voip_ice_apk', { candidate: e.candidate })
+      }
+    }
+    _voipPc.ontrack = (e) => {
+      let audio = document.getElementById('voip-remote-audio')
+      if (!audio) { audio = document.createElement('audio'); audio.id='voip-remote-audio'; audio.autoplay=true; document.body.appendChild(audio) }
+      audio.srcObject = e.streams[0]
+    }
+    await _voipPc.setRemoteDescription(new RTCSessionDescription(data.offer))
+    const answer = await _voipPc.createAnswer()
+    await _voipPc.setLocalDescription(answer)
+    if (_voipSocket) _voipSocket.emit('voip_answer', { answer })
+  } catch (e) {
+    voipColgar()
+  }
+}
+
+function voipColgar() {
+  _voipActiva = false
+  if (_voipPc) { try { _voipPc.close() } catch {}; _voipPc = null }
+  if (_voipStream) { _voipStream.getTracks().forEach(t => t.stop()); _voipStream = null }
+  const audio = document.getElementById('voip-remote-audio')
+  if (audio) { audio.srcObject = null; audio.remove() }
+  _voipOcultarUI()
+  if (_voipSocket) _voipSocket.emit('voip_colgar_apk')
+}
+
+function _voipMostrarUI() {
+  let overlay = document.getElementById('voip-overlay')
+  if (!overlay) {
+    overlay = document.createElement('div')
+    overlay.id = 'voip-overlay'
+    overlay.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(10,0,17,.92);border:1px solid rgba(16,185,129,.4);border-radius:16px;padding:14px 20px;z-index:9999;display:flex;align-items:center;gap:14px;min-width:260px;backdrop-filter:blur(12px)'
+    overlay.innerHTML = '<div style="font-size:28px">🎙️</div><div style="flex:1"><div style="font-size:13px;font-weight:700;color:#10b981">Comunicación Directa</div><div style="font-size:11px;color:#7c6ea8">Operador conectado</div></div><button onclick="voipColgar()" style="background:rgba(239,68,68,.8);border:none;border-radius:10px;color:#fff;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">COLGAR</button>'
+    document.body.appendChild(overlay)
+  }
+  overlay.style.display = 'flex'
+  if (navigator.vibrate) navigator.vibrate([100,50,100])
+}
+
+function _voipOcultarUI() {
+  const overlay = document.getElementById('voip-overlay')
+  if (overlay) overlay.style.display = 'none'
 }
 
 // ════════════════════════════════════════════════════
@@ -1790,7 +1883,7 @@ async function hacerLogin() {
     btn.disabled = false; btn.textContent = 'INGRESAR'
   }
 }
-function logout() { localStorage.clear(); location.reload() }
+function logout() { voipDesconectar(); localStorage.clear(); location.reload() }
 
 // ════════════════════════════════════════════════════
 //  ESTADO INICIAL
@@ -1840,6 +1933,8 @@ function iniciar() {
       }
     }, 800)
   }
+  // Conectar socket VoIP
+  voipConectar()
   // Pending widget action (cold start from widget)
   setTimeout(() => {
     if (window.LimaAndroid) {
