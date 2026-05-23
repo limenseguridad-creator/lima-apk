@@ -1,5 +1,18 @@
 # Changelog — Lima APK
 
+## Build 50 — 2026-05-23
+### Feature: VoIP — Comunicación Directa con el Receptor
+- socket.io client (CDN 4.7.5) cargado en `<head>`.
+- `voipConectar()`: al hacer login, conecta socket.io a `limaguard.ldtp.com/voip` con JWT.
+- `voipAtender(data)`: al recibir `voip_llamada` del receptor, auto-responde:
+  - getUserMedia(audio) + RTCPeerConnection (STUN Google)
+  - Crea answer → emit `voip_answer`
+  - ICE candidates enviados vía `voip_ice_apk`
+- `voipColgar()`: cierra PC, stream y overlay. Emite `voip_colgar_apk` al receptor.
+- Overlay flotante durante llamada activa: "Comunicación Directa — Operador conectado" + botón COLGAR.
+- GPS polling: 30s → 15s para mapa más reactivo.
+- `usuario_email` enviado al servidor en `POST /api/asistencia`.
+
 ## Build 49 — 2026-05-23
 ### Fix: regresión visual + Pedido de Ayuda (correcto)
 - **REGRESIÓN REVERTIDA**: el build 48 había introducido una copia vieja de index.html
