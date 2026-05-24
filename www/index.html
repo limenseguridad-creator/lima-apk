@@ -1343,6 +1343,7 @@ async function confirmarPanico(tipo) {
 //  ASISTENCIA PERSONAL (PEDIDO DE AYUDA)
 // ════════════════════════════════════════════════════
 let _asistenciaId = null
+let _asistenciaStatInterval = null
 let _asistenciaInterval = null
 let _tiempoAyuda = Date.now()
 
@@ -1393,6 +1394,16 @@ async function confirmarAyuda() {
         } catch {}
       }, 15000)
       _mostrarEstadoAyuda()
+      // Polling estado cada 30s (fallback si VoIP no llega)
+      _asistenciaStatInterval = setInterval(async () => {
+        if (!_asistenciaId) { clearInterval(_asistenciaStatInterval); return }
+        try {
+          const rs = await fetch(API_BASE + '/api/asistencia/' + _asistenciaId + '/estado', {
+            headers: { Authorization: 'Bearer ' + (getToken() || '') }
+          })
+          if (rs.ok) { const ds = await rs.json(); if (ds.estado === 'resuelta') _manejarAyudaResuelta() }
+        } catch {}
+      }, 30000)
     } else {
       document.getElementById('modulo-body').innerHTML = '<div class="mod-error">' + (d.error||'No se pudo enviar el pedido') + '</div>'
       beepErr()
@@ -1417,7 +1428,9 @@ function _mostrarEstadoAyuda() {
 async function cancelarAyuda() {
   if (!_asistenciaId) { cerrarModulo(); return }
   clearInterval(_asistenciaInterval)
+  clearInterval(_asistenciaStatInterval)
   _asistenciaInterval = null
+  _asistenciaStatInterval = null
   try {
     await fetch(API_BASE + '/api/asistencia/' + _asistenciaId + '/cancelar', {
       method:'POST',
@@ -1447,7 +1460,7 @@ function voipConectar() {
   _voipSocket = io('https://limaguard.ldtp.com', {
     path: '/voip',
     auth: { token },
-    transports: ['websocket'],
+    transports: ['polling', 'websocket'],
     reconnection: true,
     reconnectionDelay: 3000
   })
@@ -1455,6 +1468,7 @@ function voipConectar() {
     _voipSocket.emit('registrar_apk', token)
   })
   _voipSocket.on('voip_llamada', voipAtender)
+  _voipSocket.on('asistencia_resuelta', () => { if (_asistenciaId) _manejarAyudaResuelta() })
   _voipSocket.on('voip_ice',    (d) => {
     if (_voipPc && d.candidate) {
       try { _voipPc.addIceCandidate(new RTCIceCandidate(d.candidate)) } catch {}
@@ -1523,6 +1537,25 @@ function _voipMostrarUI() {
 function _voipOcultarUI() {
   const overlay = document.getElementById('voip-overlay')
   if (overlay) overlay.style.display = 'none'
+}
+
+function _manejarAyudaResuelta() {
+  if (!_asistenciaId) return
+  clearInterval(_asistenciaInterval)
+  clearInterval(_asistenciaStatInterval)
+  _asistenciaInterval = null
+  _asistenciaStatInterval = null
+  _asistenciaId = null
+  if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100])
+  document.getElementById('modulo-body').innerHTML =
+    '<div class="mod-card" style="border-color:rgba(16,185,129,.4);align-items:center;text-align:center;gap:14px">' +
+    '<div style="font-size:44px">✅</div>' +
+    '<div style="font-size:15px;font-weight:700;color:var(--green)">Ayuda resuelta</div>' +
+    '<div style="font-size:12px;color:var(--muted)">El operador atendió tu pedido.</div>' +
+    '<button class="mod-btn secondary" onclick="cerrarModulo()" style="margin-top:4px;width:100%">Cerrar</button></div>'
+  if (!document.getElementById('modulo-panel').classList.contains('show'))
+    document.getElementById('modulo-panel').classList.add('show')
+  beepOk()
 }
 
 // ════════════════════════════════════════════════════
