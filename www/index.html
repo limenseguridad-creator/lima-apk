@@ -1507,7 +1507,22 @@ async function voipAtender(data) {
     await _voipPc.setLocalDescription(answer)
     if (_voipSocket) _voipSocket.emit('voip_answer', { answer })
   } catch (e) {
-    voipColgar()
+    const en = (e && e.name) ? e.name : 'Error'
+    const em = (e && e.message) ? e.message : ''
+    console.error('[VoIP] voipAtender fallo:', en, em)
+    // Mostrar error en overlay para diagnostico
+    const _ov = document.getElementById('voip-overlay')
+    if (_ov) {
+      _ov.innerHTML = '<div style="color:#ef4444;font-size:13px;padding:24px;text-align:center">' +
+        '<div style="font-size:32px;margin-bottom:12px">⚠️</div>' +
+        '<div>Error VoIP: ' + en + '</div>' +
+        '<div style="font-size:11px;opacity:.7;margin-top:6px">' + em + '</div>' +
+        '<button onclick="voipColgar()" style="margin-top:16px;background:#1c0a35;border:1px solid rgba(239,68,68,.4);color:#ef4444;padding:10px 20px;border-radius:8px;cursor:pointer">Cerrar</button>' +
+        '</div>'
+    } else {
+      _voipActiva = false
+      if (_voipSocket) _voipSocket.emit('voip_colgar_apk')
+    }
   }
 }
 
@@ -1965,6 +1980,25 @@ function iniciar() {
         window.speechSynthesis.speak(utter)
       }
     }, 800)
+  }
+  // Pre-solicitar permiso microfono (Android cachea permiso con gesto del usuario)
+  // Necesario para que voipAtender() pueda llamar getUserMedia() desde socket event sin gesto
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    // Mostrar aviso al usuario antes de pedir el permiso
+    var _micNotice = document.createElement('div')
+    _micNotice.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(28,10,53,.95);border:1px solid rgba(192,132,252,.3);color:#c084fc;font-size:12px;padding:10px 18px;border-radius:20px;z-index:8000;text-align:center;max-width:280px;box-shadow:0 4px 20px rgba(0,0,0,.5)'
+    _micNotice.innerHTML = '🎙️ <b>Permiso de micrófono</b><br><span style="color:#a78bca;font-size:11px">Necesario para recibir llamadas directas del operador. Tu micrófono solo se activará durante una llamada.</span>'
+    document.body.appendChild(_micNotice)
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(s) {
+      s.getTracks().forEach(function(t) { t.stop() })
+      console.log('[VoIP] Permiso microfono pre-cacheado OK')
+      _micNotice.innerHTML = '✅ <span style="font-size:11px">Listo para recibir llamadas del operador</span>'
+      setTimeout(function() { try { _micNotice.remove() } catch {} }, 2500)
+    }).catch(function(e) {
+      console.warn('[VoIP] Pre-warm mic fallo:', e.name)
+      _micNotice.innerHTML = '⚠️ <span style="font-size:11px;color:#fbbf24">Sin permiso de micrófono — las llamadas del operador no funcionarán</span>'
+      setTimeout(function() { try { _micNotice.remove() } catch {} }, 4000)
+    })
   }
   // Conectar socket VoIP
   voipConectar()
