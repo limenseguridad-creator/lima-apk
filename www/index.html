@@ -2130,6 +2130,18 @@ function iniciar() {
   }, 300)
 }
 
+// Botón RETROCEDER de Android — colgar VoIP si activo, si no minimizar la app
+if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+  window.Capacitor.Plugins.App.addListener('backButton', function(info) {
+    if (_voipActiva) {
+      voipColgar()
+    } else {
+      // Minimizar (no cerrar) la app al presionar retroceder en la raíz
+      window.Capacitor.Plugins.App.minimizeApp()
+    }
+  })
+}
+
 // Release mic when app goes to background (prevents "NotReadableError" on resume)
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
