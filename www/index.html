@@ -1783,7 +1783,7 @@ function actualizarBtnMic() {
   const btn = document.getElementById('btn-mic-in')
   if (!btn) return
   if (grabando) {
-    btn.textContent = '⏹ Escuchando...'
+    btn.textContent = window.Capacitor ? '⏹ Toca para detener' : '⏹ Escuchando...'
     btn.style.color = 'var(--red)'
     btn.style.borderColor = 'var(--red)'
   } else {
@@ -1901,7 +1901,15 @@ async function iniciarEscucha(retryCount = 0) {
       setAvatarState('listening')
       actualizarBtnMic()
       if (navigator.vibrate) navigator.vibrate(50)
-      iniciarSilenceDetector(stream)
+      if (window.Capacitor) {
+        // En Android WebView, AudioContext.createMediaStreamSource no recibe audio mientras
+        // MediaRecorder graba. Usamos timer de maximo 12s en vez del silence detector.
+        silenceTimer = setTimeout(function() {
+          if (grabando && mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop()
+        }, 12000)
+      } else {
+        iniciarSilenceDetector(stream)
+      }
     }
 
     mediaRecorder.onstop = async () => {
@@ -1913,7 +1921,7 @@ async function iniciarEscucha(retryCount = 0) {
 
       const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' })
       const recDuration = Date.now() - recStartTime
-      if (blob.size < 5000 || recDuration < 1200) {
+      if (blob.size < 800 || recDuration < 500) {
         // Audio demasiado corto o vacío — evita alucinaciones de Whisper
         setAvatarState('idle')
         actualizarBtnMic()
