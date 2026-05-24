@@ -1499,30 +1499,50 @@ async function voipAtender(data) {
   _voipActiva = true
   _voipMostrarUI()
   try {
-    // Liberar microfono si está en uso por la escucha/grabacion de LIMA
-    // (NotReadableError si otro stream lo tiene abierto)
+    // ── Liberar TODOS los recursos de audio antes de VoIP ──────────────────
+    // El orden importa: 1) detener grabacion, 2) await audioCtx.close(),
+    // 3) detener tracks, 4) esperar que Android libere el hardware.
+    //
+    // mediaRecorder.stop() es async (dispara onstop que hace más trabajo).
+    // audioCtx.close() devuelve Promise — si no se awaita, el hardware sigue ocupado.
+
+    // 1. Detener silence detector primero (cancela timers, suelta referencias)
+    if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null }
+    if (analyser) { analyser = null }
+
+    // 2. Cerrar AudioContext y ESPERAR que termine
+    if (audioCtx) {
+      try { await audioCtx.close() } catch {}
+      audioCtx = null
+    }
+
+    // 3. Detener tracks del stream (fuerza al MediaRecorder a emitir onstop)
+    if (micStream) {
+      try { micStream.getTracks().forEach(function(t) { t.stop() }) } catch {}
+      micStream = null
+    }
+
+    // 4. Si el MediaRecorder todavía está grabando, parar
     if (grabando && mediaRecorder) {
       try { mediaRecorder.stop() } catch {}
       grabando = false
     }
-    detenerSilenceDetector()
-    if (micStream) {
-      try { micStream.getTracks().forEach(t => t.stop()) } catch {}
-      micStream = null
-    }
-    // Pausa para que Android libere el hardware del microfono
-    await new Promise(function(r) { setTimeout(r, 600) })
-    // getUserMedia con retry — NotReadableError puede ser transitorio en Android
+
+    // 5. Esperar que Android libere el hardware completamente
+    await new Promise(function(r) { setTimeout(r, 1200) })
+
+    // 6. getUserMedia con hasta 5 reintentos (NotReadableError puede ser transitorio)
     var _gumAttempts = 0
     while (true) {
       try {
         _voipStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        console.log('[VoIP] getUserMedia OK en intento ' + (_gumAttempts + 1))
         break
       } catch (_gumErr) {
         _gumAttempts++
-        if (_gumErr.name === 'NotReadableError' && _gumAttempts < 4) {
-          console.warn('[VoIP] NotReadableError intento ' + _gumAttempts + ' — reintentando en 600ms')
-          await new Promise(function(r) { setTimeout(r, 600) })
+        console.warn('[VoIP] getUserMedia fallo intento ' + _gumAttempts + ':', _gumErr.name, _gumErr.message)
+        if (_gumErr.name === 'NotReadableError' && _gumAttempts < 5) {
+          await new Promise(function(r) { setTimeout(r, 1000) })
         } else {
           throw _gumErr
         }
