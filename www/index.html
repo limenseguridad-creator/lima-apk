@@ -1570,7 +1570,28 @@ async function _contestarVoip() {
   try {
     // Pausa para que audioCtx.close() y detenerSilenceDetector hayan liberado el hardware
     await new Promise(function(r) { setTimeout(r, 800) })
-    _voipStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+
+    // Intentar getUserMedia con audio RAW (sin procesadores de hardware).
+    // Con constraints default, Android WebView/Capacitor pide audio focus exclusivo
+    // que el sistema puede denegar → NotReadableError.
+    // Sin procesadores, usa captura directa sin restricciones de audio focus.
+    var _audioConstraint = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      channelCount: 1
+    }
+
+    // Intentar obtener deviceId exacto del primer microfono disponible
+    try {
+      var _devs = await navigator.mediaDevices.enumerateDevices()
+      var _mic = _devs.find(function(d) { return d.kind === 'audioinput' })
+      if (_mic && _mic.deviceId && _mic.deviceId !== '') {
+        _audioConstraint.deviceId = { exact: _mic.deviceId }
+      }
+    } catch (_devErr) { /* continuar sin deviceId */ }
+
+    _voipStream = await navigator.mediaDevices.getUserMedia({ audio: _audioConstraint, video: false })
     console.log('[VoIP] getUserMedia OK')
     _voipPc = new RTCPeerConnection({
       iceServers: [
