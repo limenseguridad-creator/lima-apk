@@ -1494,60 +1494,80 @@ function voipDesconectar() {
   voipColgar()
 }
 
-async function voipAtender(data) {
-  if (_voipActiva) return  // ya en llamada
+let _voipCountdownTimer = null
+let _voipPendingData    = null
+
+function voipAtender(data) {
+  if (_voipActiva) return
+  _voipPendingData = data
   _voipActiva = true
-  _voipMostrarUI()
+  if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300])
+
+  // Liberar audio en background mientras muestra el contador
+  if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null }
+  if (analyser) { analyser = null }
+  if (audioCtx) { try { audioCtx.close().catch(function(){}) } catch {} ; audioCtx = null }
+  if (micStream) { try { micStream.getTracks().forEach(function(t) { t.stop() }) } catch {} ; micStream = null }
+  if (grabando && mediaRecorder) { try { mediaRecorder.stop() } catch {} ; grabando = false }
+
+  var secs = 3
+  var overlay = document.getElementById('voip-overlay')
+  if (!overlay) {
+    overlay = document.createElement('div')
+    overlay.id = 'voip-overlay'
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,20,.97);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px'
+    document.body.appendChild(overlay)
+  }
+
+  function renderContador(n) {
+    overlay.innerHTML =
+      '<div style="font-size:56px">📞</div>' +
+      '<div style="color:#10b981;font-size:17px;font-weight:700;letter-spacing:1px">Llamada del Operador</div>' +
+      '<div style="color:#7c6ea8;font-size:12px">Comunicación directa LIMEN</div>' +
+      '<div style="font-size:48px;font-weight:900;color:#10b981;font-variant-numeric:tabular-nums">' + n + '</div>' +
+      '<button onclick="_contestarVoip()" style="background:#10b981;border:none;color:#fff;padding:18px 40px;border-radius:50px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:.5px">📲 Contestar ahora</button>' +
+      '<button onclick="_rechazarVoip()" style="background:transparent;border:1px solid rgba(239,68,68,.5);color:#ef4444;padding:10px 28px;border-radius:50px;font-size:13px;cursor:pointer">Rechazar</button>'
+  }
+
+  overlay.style.display = 'flex'
+  renderContador(secs)
+
+  _voipCountdownTimer = setInterval(function() {
+    secs--
+    if (secs <= 0) {
+      clearInterval(_voipCountdownTimer)
+      _voipCountdownTimer = null
+      _contestarVoip()
+    } else {
+      renderContador(secs)
+    }
+  }, 1000)
+}
+
+function _rechazarVoip() {
+  if (_voipCountdownTimer) { clearInterval(_voipCountdownTimer); _voipCountdownTimer = null }
+  _voipPendingData = null
+  _voipActiva = false
+  _voipOcultarUI()
+  if (_voipSocket) _voipSocket.emit('voip_colgar_apk')
+}
+
+async function _contestarVoip() {
+  if (_voipCountdownTimer) { clearInterval(_voipCountdownTimer); _voipCountdownTimer = null }
+  var data = _voipPendingData
+  _voipPendingData = null
+  if (!data) return
+
+  // Mostrar spinner mientras conecta
+  var overlay = document.getElementById('voip-overlay')
+  if (overlay) overlay.innerHTML =
+    '<div style="font-size:40px">🎙️</div>' +
+    '<div style="color:#10b981;font-size:15px;font-weight:700">Conectando...</div>' +
+    '<div style="color:#7c6ea8;font-size:11px">Iniciando audio</div>'
+
   try {
-    // ── Liberar TODOS los recursos de audio antes de VoIP ──────────────────
-    // El orden importa: 1) detener grabacion, 2) await audioCtx.close(),
-    // 3) detener tracks, 4) esperar que Android libere el hardware.
-    //
-    // mediaRecorder.stop() es async (dispara onstop que hace más trabajo).
-    // audioCtx.close() devuelve Promise — si no se awaita, el hardware sigue ocupado.
-
-    // 1. Detener silence detector primero (cancela timers, suelta referencias)
-    if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null }
-    if (analyser) { analyser = null }
-
-    // 2. Cerrar AudioContext y ESPERAR que termine
-    if (audioCtx) {
-      try { await audioCtx.close() } catch {}
-      audioCtx = null
-    }
-
-    // 3. Detener tracks del stream (fuerza al MediaRecorder a emitir onstop)
-    if (micStream) {
-      try { micStream.getTracks().forEach(function(t) { t.stop() }) } catch {}
-      micStream = null
-    }
-
-    // 4. Si el MediaRecorder todavía está grabando, parar
-    if (grabando && mediaRecorder) {
-      try { mediaRecorder.stop() } catch {}
-      grabando = false
-    }
-
-    // 5. Esperar que Android libere el hardware completamente
-    await new Promise(function(r) { setTimeout(r, 1200) })
-
-    // 6. getUserMedia con hasta 5 reintentos (NotReadableError puede ser transitorio)
-    var _gumAttempts = 0
-    while (true) {
-      try {
-        _voipStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-        console.log('[VoIP] getUserMedia OK en intento ' + (_gumAttempts + 1))
-        break
-      } catch (_gumErr) {
-        _gumAttempts++
-        console.warn('[VoIP] getUserMedia fallo intento ' + _gumAttempts + ':', _gumErr.name, _gumErr.message)
-        if (_gumErr.name === 'NotReadableError' && _gumAttempts < 5) {
-          await new Promise(function(r) { setTimeout(r, 1000) })
-        } else {
-          throw _gumErr
-        }
-      }
-    }
+    _voipStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    console.log('[VoIP] getUserMedia OK')
     _voipPc = new RTCPeerConnection({
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -1599,6 +1619,8 @@ async function voipAtender(data) {
 }
 
 function voipColgar() {
+  if (_voipCountdownTimer) { clearInterval(_voipCountdownTimer); _voipCountdownTimer = null }
+  _voipPendingData = null
   _voipActiva = false
   if (_voipPc) { try { _voipPc.close() } catch {}; _voipPc = null }
   if (_voipStream) { _voipStream.getTracks().forEach(t => t.stop()); _voipStream = null }
