@@ -1541,18 +1541,21 @@ function voipAtender(data) {
   if (!overlay) {
     overlay = document.createElement('div')
     overlay.id = 'voip-overlay'
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,20,.97);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px'
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#0a0008;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px'
     document.body.appendChild(overlay)
   }
 
   function renderContador(n) {
     overlay.innerHTML =
-      '<div style="font-size:56px">📞</div>' +
-      '<div style="color:#10b981;font-size:17px;font-weight:700;letter-spacing:1px">Llamada del Operador</div>' +
-      '<div style="color:#7c6ea8;font-size:12px">Comunicación directa LIMEN</div>' +
-      '<div style="font-size:48px;font-weight:900;color:#10b981;font-variant-numeric:tabular-nums">' + n + '</div>' +
-      '<button onclick="_contestarVoip()" style="background:#10b981;border:none;color:#fff;padding:18px 40px;border-radius:50px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:.5px">📲 Contestar ahora</button>' +
-      '<button onclick="_rechazarVoip()" style="background:transparent;border:1px solid rgba(239,68,68,.5);color:#ef4444;padding:10px 28px;border-radius:50px;font-size:13px;cursor:pointer">Rechazar</button>'
+      '<div style="width:100%;text-align:center;background:rgba(239,68,68,.18);border:2px solid rgba(239,68,68,.7);border-radius:16px;padding:20px 16px;margin-bottom:4px">' +
+        '<div style="font-size:13px;font-weight:800;letter-spacing:2px;color:#ef4444;text-transform:uppercase;margin-bottom:6px">⚠ EMERGENCIA — LIMEN SEGURIDAD ⚠</div>' +
+        '<div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px">Un operador lo está contactando</div>' +
+        '<div style="font-size:12px;color:rgba(255,255,255,.6)">Identificará el problema y coordinará la ayuda</div>' +
+      '</div>' +
+      '<div style="font-size:64px;font-weight:900;color:#ef4444;font-variant-numeric:tabular-nums;line-height:1">' + n + '</div>' +
+      '<div style="font-size:11px;color:rgba(255,255,255,.45)">Atendiendo automáticamente en ' + n + ' segundo' + (n!==1?'s':'') + '...</div>' +
+      '<button onclick="_contestarVoip()" style="width:100%;background:#ef4444;border:none;color:#fff;padding:20px;border-radius:14px;font-size:18px;font-weight:800;cursor:pointer;letter-spacing:.5px">📲 ATENDER AHORA</button>' +
+      '<button onclick="_rechazarVoip()" style="width:100%;background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.5);padding:12px;border-radius:14px;font-size:13px;cursor:pointer">Colgar / Rechazar</button>'
   }
 
   overlay.style.display = 'flex'
@@ -1587,9 +1590,9 @@ async function _contestarVoip() {
   // Mostrar spinner mientras conecta
   var overlay = document.getElementById('voip-overlay')
   if (overlay) overlay.innerHTML =
-    '<div style="font-size:40px">🎙️</div>' +
-    '<div style="color:#10b981;font-size:15px;font-weight:700">Conectando...</div>' +
-    '<div style="color:#7c6ea8;font-size:11px">Iniciando audio</div>'
+    '<div style="font-size:48px">🎙️</div>' +
+    '<div style="color:#ef4444;font-size:16px;font-weight:800;letter-spacing:1px">Conectando con operador...</div>' +
+    '<div style="color:rgba(255,255,255,.5);font-size:12px">Iniciando audio de emergencia</div>'
 
   try {
     // getUserMedia debe ser la PRIMERA operacion async tras el gesto del usuario.
