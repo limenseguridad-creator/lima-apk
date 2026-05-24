@@ -1487,6 +1487,30 @@ function voipConectar() {
     }
   })
   _voipSocket.on('voip_colgar', voipColgar)
+
+  // PTT walkie-talkie: active=true → operador habla (Lima muta mic)
+  //                    active=false → Lima habla (Lima activa mic)
+  _voipSocket.on('voip_ptt', function(d) {
+    if (_voipStream) _voipStream.getTracks().forEach(function(t) { t.enabled = !d.active })
+    // Beep corto para indicar cambio de turno
+    try {
+      var _bCtx = new (window.AudioContext || window.webkitAudioContext)()
+      var _bOsc = _bCtx.createOscillator()
+      var _bGain = _bCtx.createGain()
+      _bOsc.connect(_bGain); _bGain.connect(_bCtx.destination)
+      _bOsc.frequency.value = d.active ? 880 : 660
+      _bGain.gain.setValueAtTime(0.3, _bCtx.currentTime)
+      _bGain.gain.exponentialRampToValueAtTime(0.001, _bCtx.currentTime + 0.15)
+      _bOsc.start(); _bOsc.stop(_bCtx.currentTime + 0.15)
+      setTimeout(function() { try { _bCtx.close() } catch {} }, 300)
+    } catch (_be) {}
+    // Actualizar overlay
+    var ov = document.getElementById('voip-overlay')
+    if (ov) {
+      var ind = ov.querySelector('#voip-ptt-ind')
+      if (ind) ind.textContent = d.active ? '🎙 Operador hablando...' : '🗣 Tu turno — habla ahora'
+    }
+  })
 }
 
 function voipDesconectar() {
@@ -1604,6 +1628,8 @@ async function _contestarVoip() {
     if (!_voipActiva) { try { _voipPc.close() } catch {}; _voipPc = null; return }
     await _voipPc.setLocalDescription(answer)
     if (!_voipActiva) return
+    // PTT: Lima empieza con mic activo (su turno por defecto)
+    if (_voipStream) _voipStream.getTracks().forEach(function(t) { t.enabled = true })
     if (_voipSocket) _voipSocket.emit('voip_answer', { answer })
   } catch (e) {
     const en = (e && e.name) ? e.name : 'Error'
@@ -1676,7 +1702,7 @@ function _voipMostrarUI() {
     overlay = document.createElement('div')
     overlay.id = 'voip-overlay'
     overlay.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(10,0,17,.92);border:1px solid rgba(16,185,129,.4);border-radius:16px;padding:14px 20px;z-index:9999;display:flex;align-items:center;gap:14px;min-width:260px;backdrop-filter:blur(12px)'
-    overlay.innerHTML = '<div style="font-size:28px">🎙️</div><div style="flex:1"><div style="font-size:13px;font-weight:700;color:#10b981">Comunicación Directa</div><div style="font-size:11px;color:#7c6ea8">Operador conectado</div></div><button onclick="voipColgar()" style="background:rgba(239,68,68,.8);border:none;border-radius:10px;color:#fff;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">COLGAR</button>'
+    overlay.innerHTML = '<div style="font-size:24px">🎙️</div><div style="flex:1"><div style="font-size:13px;font-weight:700;color:#10b981">Comunicación Directa</div><div id="voip-ptt-ind" style="font-size:11px;color:#f59e0b;font-weight:600">🗣 Tu turno — habla ahora</div></div><button onclick="voipColgar()" style="background:rgba(239,68,68,.8);border:none;border-radius:10px;color:#fff;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">COLGAR</button>'
     document.body.appendChild(overlay)
   }
   overlay.style.display = 'flex'
