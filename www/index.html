@@ -1487,6 +1487,19 @@ async function voipAtender(data) {
   _voipActiva = true
   _voipMostrarUI()
   try {
+    // Liberar microfono si está en uso por la escucha/grabacion de LIMA
+    // (NotReadableError si otro stream lo tiene abierto)
+    if (grabando && mediaRecorder) {
+      try { mediaRecorder.stop() } catch {}
+      grabando = false
+    }
+    detenerSilenceDetector()
+    if (micStream) {
+      try { micStream.getTracks().forEach(t => t.stop()) } catch {}
+      micStream = null
+    }
+    // Pequeña pausa para que Android libere el hardware del microfono
+    await new Promise(function(r) { setTimeout(r, 300) })
     // getUserMedia funciona sin gesto porque el permiso fue concedido en iniciar()
     _voipStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
     _voipPc = new RTCPeerConnection({
