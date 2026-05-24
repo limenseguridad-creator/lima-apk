@@ -1599,8 +1599,11 @@ async function _contestarVoip() {
       audio.srcObject = e.streams[0]
     }
     await _voipPc.setRemoteDescription(new RTCSessionDescription(data.offer))
+    if (!_voipActiva) { try { _voipPc.close() } catch {}; _voipPc = null; return }
     const answer = await _voipPc.createAnswer()
+    if (!_voipActiva) { try { _voipPc.close() } catch {}; _voipPc = null; return }
     await _voipPc.setLocalDescription(answer)
+    if (!_voipActiva) return
     if (_voipSocket) _voipSocket.emit('voip_answer', { answer })
   } catch (e) {
     const en = (e && e.name) ? e.name : 'Error'
@@ -1647,11 +1650,19 @@ async function _contestarVoip() {
 }
 
 function voipColgar() {
+  // Guard: si ya esta colgado, no hacer nada
+  if (!_voipActiva && !_voipCountdownTimer && !_voipPendingData && !_voipPc && !_voipStream) return
   if (_voipCountdownTimer) { clearInterval(_voipCountdownTimer); _voipCountdownTimer = null }
   _voipPendingData = null
   _voipActiva = false
-  if (_voipPc) { try { _voipPc.close() } catch {}; _voipPc = null }
-  if (_voipStream) { _voipStream.getTracks().forEach(t => t.stop()); _voipStream = null }
+
+  // Cerrar PeerConnection primero (sincrono, no bloquea)
+  const _pc = _voipPc; _voipPc = null
+  if (_pc) { try { _pc.close() } catch {} }
+
+  // Detener tracks en setTimeout para no bloquear el hilo UI de Android WebView
+  const _st = _voipStream; _voipStream = null
+  if (_st) { setTimeout(function() { try { _st.getTracks().forEach(function(t) { t.stop() }) } catch {} }, 0) }
 
   const audio = document.getElementById('voip-remote-audio')
   if (audio) { audio.srcObject = null; audio.remove() }
