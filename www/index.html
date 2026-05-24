@@ -1449,10 +1449,11 @@ async function cancelarAyuda() {
 // ════════════════════════════════════════════════════
 //  VOIP — COMUNICACIÓN DIRECTA CON RECEPTOR
 // ════════════════════════════════════════════════════
-let _voipSocket   = null
-let _voipPc       = null
-let _voipStream   = null
-let _voipActiva   = false
+let _voipSocket    = null
+let _voipPc        = null
+let _voipStream    = null
+let _voipActiva    = false
+let _voipMicStream = null  // stream pre-adquirido en login (sin gesto de usuario en llamada)
 
 function voipConectar() {
   const token = getToken()
@@ -1487,9 +1488,30 @@ async function voipAtender(data) {
   _voipActiva = true
   _voipMostrarUI()
   try {
-    _voipStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    // Reutilizar stream pre-adquirido en login (sin necesitar gesto del usuario)
+    if (_voipMicStream && _voipMicStream.active) {
+      _voipStream = _voipMicStream
+      _voipMicStream = null
+      _voipStream.getAudioTracks().forEach(function(t) { t.enabled = true })
+      console.log('[VoIP] Usando stream pre-adquirido')
+    } else {
+      console.warn('[VoIP] Stream pre-adquirido no disponible, solicitando nuevo')
+      _voipStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    }
     _voipPc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        {
+          urls: [
+            'turn:openrelay.metered.ca:80',
+            'turn:openrelay.metered.ca:443',
+            'turn:openrelay.metered.ca:443?transport=tcp'
+          ],
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        }
+      ]
     })
     _voipStream.getTracks().forEach(t => _voipPc.addTrack(t, _voipStream))
     _voipPc.onicecandidate = (e) => {
@@ -1530,6 +1552,8 @@ function voipColgar() {
   _voipActiva = false
   if (_voipPc) { try { _voipPc.close() } catch {}; _voipPc = null }
   if (_voipStream) { _voipStream.getTracks().forEach(t => t.stop()); _voipStream = null }
+  // Limpiar stream pre-adquirido si quedó colgado
+  if (_voipMicStream) { try { _voipMicStream.getTracks().forEach(t => t.stop()) } catch {}; _voipMicStream = null }
   const audio = document.getElementById('voip-remote-audio')
   if (audio) { audio.srcObject = null; audio.remove() }
   _voipOcultarUI()
@@ -1981,23 +2005,24 @@ function iniciar() {
       }
     }, 800)
   }
-  // Pre-solicitar permiso microfono (Android cachea permiso con gesto del usuario)
-  // Necesario para que voipAtender() pueda llamar getUserMedia() desde socket event sin gesto
+  // Pre-adquirir stream de microfono con gesto del usuario (login)
+  // Queda VIVO (muted) para que voipAtender() lo reutilice sin nuevo gesto
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    // Mostrar aviso al usuario antes de pedir el permiso
     var _micNotice = document.createElement('div')
-    _micNotice.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(28,10,53,.95);border:1px solid rgba(192,132,252,.3);color:#c084fc;font-size:12px;padding:10px 18px;border-radius:20px;z-index:8000;text-align:center;max-width:280px;box-shadow:0 4px 20px rgba(0,0,0,.5)'
-    _micNotice.innerHTML = '🎙️ <b>Permiso de micrófono</b><br><span style="color:#a78bca;font-size:11px">Necesario para recibir llamadas directas del operador. Tu micrófono solo se activará durante una llamada.</span>'
+    _micNotice.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(28,10,53,.95);border:1px solid rgba(192,132,252,.3);color:#c084fc;font-size:12px;padding:10px 18px;border-radius:20px;z-index:8000;text-align:center;max-width:300px;box-shadow:0 4px 20px rgba(0,0,0,.5)'
+    _micNotice.innerHTML = '🎙️ <b>Permiso de micrófono</b><br><span style="color:#a78bca;font-size:11px">Necesario para recibir llamadas directas del operador.<br>Tu micrófono solo se activa durante una llamada.</span>'
     document.body.appendChild(_micNotice)
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(s) {
-      s.getTracks().forEach(function(t) { t.stop() })
-      console.log('[VoIP] Permiso microfono pre-cacheado OK')
-      _micNotice.innerHTML = '✅ <span style="font-size:11px">Listo para recibir llamadas del operador</span>'
-      setTimeout(function() { try { _micNotice.remove() } catch {} }, 2500)
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function(s) {
+      // Mantener stream vivo pero MUTED — se reactiva sin gesto cuando llega llamada
+      s.getAudioTracks().forEach(function(t) { t.enabled = false })
+      _voipMicStream = s
+      console.log('[VoIP] Stream mic pre-adquirido y en espera (muted)')
+      _micNotice.innerHTML = '✅ <b style="color:#10b981">Listo</b> <span style="font-size:11px;color:#a78bca">— recibirás llamadas del operador automáticamente</span>'
+      setTimeout(function() { try { _micNotice.remove() } catch {} }, 3000)
     }).catch(function(e) {
-      console.warn('[VoIP] Pre-warm mic fallo:', e.name)
+      console.warn('[VoIP] No se pudo pre-adquirir mic:', e.name)
       _micNotice.innerHTML = '⚠️ <span style="font-size:11px;color:#fbbf24">Sin permiso de micrófono — las llamadas del operador no funcionarán</span>'
-      setTimeout(function() { try { _micNotice.remove() } catch {} }, 4000)
+      setTimeout(function() { try { _micNotice.remove() } catch {} }, 5000)
     })
   }
   // Conectar socket VoIP
