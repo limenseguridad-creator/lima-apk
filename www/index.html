@@ -1361,16 +1361,22 @@ function accionAyuda() {
   if (navigator.vibrate) navigator.vibrate([50,30,50])
 }
 
+let _asistenciaWatchId = null  // watchPosition id para GPS continuo
+
 async function confirmarAyuda() {
-  document.getElementById('modulo-body').innerHTML = '<div class="mod-spinner">Obteniendo ubicación...</div>'
-  let lat = null, lng = null
-  if (navigator.geolocation) {
-    try {
-      const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000,enableHighAccuracy:true}))
-      lat = pos.coords.latitude; lng = pos.coords.longitude
-    } catch {}
-  }
+  // Enviar ayuda INMEDIATAMENTE — no esperar GPS (puede tardar minutos si el chip está frío)
   document.getElementById('modulo-body').innerHTML = '<div class="mod-spinner">Enviando pedido de ayuda...</div>'
+  // Intentar obtener una posición rápida en paralelo (baja precisión, max 3s, caché ok)
+  let lat = null, lng = null
+  try {
+    const quickPos = await Promise.race([
+      new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej,
+        { timeout: 3000, enableHighAccuracy: false, maximumAge: 60000 })),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000))
+    ])
+    lat = quickPos.coords.latitude
+    lng = quickPos.coords.longitude
+  } catch {}
   try {
     const r = await fetch(API_BASE + '/api/asistencia', {
       method:'POST',
@@ -1381,18 +1387,24 @@ async function confirmarAyuda() {
     if (d.ok && d.asistencia_id) {
       _asistenciaId = d.asistencia_id
       _tiempoAyuda = Date.now()
-      _asistenciaInterval = setInterval(async () => {
-        if (!_asistenciaId) return
-        if (!navigator.geolocation) return
-        try {
-          const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:6000,enableHighAccuracy:true}))
-          await fetch(API_BASE + '/api/asistencia/' + _asistenciaId + '/gps', {
-            method:'POST',
-            headers:{ Authorization:'Bearer '+(getToken()||''), 'Content-Type':'application/json' },
-            body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-          })
-        } catch {}
-      }, 15000)
+      // watchPosition: GPS continuo sin reiniciar la adquisición cada vez
+      // Mucho más rápido que setInterval+getCurrentPosition para el primer fix
+      if (navigator.geolocation) {
+        _asistenciaWatchId = navigator.geolocation.watchPosition(
+          async (pos) => {
+            if (!_asistenciaId) return
+            try {
+              await fetch(API_BASE + '/api/asistencia/' + _asistenciaId + '/gps', {
+                method:'POST',
+                headers:{ Authorization:'Bearer '+(getToken()||''), 'Content-Type':'application/json' },
+                body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+              })
+            } catch {}
+          },
+          () => {},
+          { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+        )
+      }
       _mostrarEstadoAyuda()
       // Polling estado cada 30s (fallback si VoIP no llega)
       _asistenciaStatInterval = setInterval(async () => {
@@ -1599,6 +1611,10 @@ function _manejarAyudaResuelta() {
   if (!_asistenciaId) return
   clearInterval(_asistenciaInterval)
   clearInterval(_asistenciaStatInterval)
+  if (_asistenciaWatchId !== null) {
+    try { navigator.geolocation.clearWatch(_asistenciaWatchId) } catch {}
+    _asistenciaWatchId = null
+  }
   _asistenciaInterval = null
   _asistenciaStatInterval = null
   _asistenciaId = null
