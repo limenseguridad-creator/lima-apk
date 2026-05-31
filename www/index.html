@@ -643,7 +643,7 @@ body.lima-active .orb-ripple:nth-child(3){animation-duration:2.1s}
 // ════════════════════════════════════════════════════
 //  CONFIG
 // ════════════════════════════════════════════════════
-const API_BASE = 'https://limaguard.ldtp.com'
+const API_BASE = 'https://limeneyes.ldtp.com/lima'
 const API = API_BASE + '/comando'
 const TK  = 'lima_token'
 const UK  = 'lima_user'
@@ -1482,8 +1482,8 @@ let _voipActiva   = false
 function voipConectar() {
   const token = getToken()
   if (!token || _voipSocket) return
-  _voipSocket = io('https://limaguard.ldtp.com', {
-    path: '/voip',
+  _voipSocket = io('https://limeneyes.ldtp.com/lima', {
+    path: '/lima/voip',
     auth: { token },
     transports: ['polling', 'websocket'],
     reconnection: true,
