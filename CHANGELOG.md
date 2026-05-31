@@ -1,5 +1,14 @@
 # Changelog — Lima APK
 
+## Build 51 - 2026-05-31
+### Feature: Modulo Camaras (DoLynk HLS)
+- Boton Camaras reemplaza Mi Edificio en la barra lateral derecha.
+- abrirModuloCamara(): lista camaras del cliente via GET /api/camaras.
+- playCamera(): solicita URL HLS via POST /api/camaras/:id/hls (DoLynk cloud).
+- Player con HLS.js (CDN); fallback nativo para Safari/iOS.
+- destroyHls() al cerrar el modulo para liberar recursos.
+- limen-ai/server.js: reemplazado go2rtc por dolynk.js.
+
 ## Build 50 — 2026-05-23
 ### Feature: VoIP — Comunicación Directa con el Receptor
 - socket.io client (CDN 4.7.5) cargado en `<head>`.

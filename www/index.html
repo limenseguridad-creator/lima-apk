@@ -424,8 +424,20 @@ body.lima-active .orb-ripple:nth-child(3){animation-duration:2.1s}
 @keyframes arcSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes arcSpinRev{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}
 @keyframes glowPulse{0%,100%{opacity:0.3}50%{opacity:0.8}}
+
+/* ── MODULO CAMARAS ── */
+.cam-card{background:var(--bg3);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:4px}
+.cam-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px}
+.cam-name{font-size:13px;font-weight:700;color:var(--pL)}
+.cam-loc{font-size:10px;color:var(--muted)}
+.cam-player-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000;display:flex;align-items:center;justify-content:center}
+.cam-video{width:100%;height:100%;object-fit:cover}
+.cam-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)}
+.cam-play-btn{background:rgba(139,92,246,.25);border:1px solid var(--p);color:var(--pL);border-radius:12px;padding:12px 20px;cursor:pointer;text-align:center;touch-action:manipulation}
+.cam-play-btn:active{background:rgba(139,92,246,.45)}
 </style>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
 </head>
 <body>
 
@@ -559,8 +571,8 @@ body.lima-active .orb-ripple:nth-child(3){animation-duration:2.1s}
   <button class="sbtn" id="sbtn-gps" onclick="accionBtn('gps')">
     <span class="ico">📍</span><span class="lbl">Mi GPS</span>
   </button>
-  <button class="sbtn" id="sbtn-edificio" onclick="accionBtn('edificio')">
-    <span class="ico">🏢</span><span class="lbl">Mi Edificio</span>
+  <button class="sbtn" id="sbtn-camara" onclick="accionBtn('camara')">
+    <span class="ico">📷</span><span class="lbl">Cámaras</span>
   </button>
   <button class="sbtn panic-btn" id="sbtn-panico" onclick="accionPanico()">
     <span class="ico">🚨</span><span class="lbl">Pánico</span>
@@ -871,7 +883,7 @@ function limpiarChat() {
 function aplicarModulos() {
   const mods = getMods()
   // Mapa: btn id → mod id
-  const map = { 'sbtn-alarma':'alarma', 'sbtn-hogar':'casa', 'sbtn-gps':'gps', 'sbtn-edificio':'edificio' }
+  const map = { 'sbtn-alarma':'alarma', 'sbtn-hogar':'casa', 'sbtn-gps':'gps', 'sbtn-camara':'camara', 'sbtn-edificio':'edificio' }
   for (const [id, mod] of Object.entries(map)) {
     const btn = document.getElementById(id)
     if (!btn) continue
@@ -1043,6 +1055,7 @@ function _abrirModulo(titulo) {
 }
 
 function cerrarModulo() {
+  destroyHls()
   document.getElementById('modulo-panel').classList.remove('show')
   // Restore orb to current alarm state color (remove amber if was hogar/edificio)
   const b = document.body
@@ -1748,6 +1761,7 @@ function accionBtn(tipo) {
     case 'alarma':   abrirModuloAlarma(); break
     case 'hogar':    setLimaState('amber'); abrirModuloHogar(); break
     case 'gps':      abrirModuloGPS(); break
+    case 'camara':   abrirModuloCamara(); break
     case 'edificio': setLimaState('amber'); abrirModuloEdificio(); break
     default: { const cmd = BTN_CMDS[tipo]; if(cmd){ inp.value=cmd; enviar() } }
   }
@@ -2256,6 +2270,116 @@ window.addEventListener('beforeinstallprompt', e => {
   const hdrBtns = document.querySelector('#hdr-right div')
   if (hdrBtns) hdrBtns.prepend(btn)
 })
+
+// ════════════════════════════════════════════════════
+//  MODULO CAMARAS (DoLynk HLS)
+// ════════════════════════════════════════════════════
+let _hlsInstances = []
+
+function destroyHls() {
+  _hlsInstances.forEach(function(h) { try { h.destroy() } catch(e) {} })
+  _hlsInstances = []
+}
+
+async function abrirModuloCamara() {
+  var mb = document.getElementById('modulo-body')
+  var mp = document.getElementById('modulo-panel')
+  document.getElementById('modulo-titulo').textContent = 'CAMARAS'
+  mb.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando...</div>'
+  mp.classList.add('show')
+  destroyHls()
+
+  try {
+    var hdr = getAuthHeader()
+    var r = await fetch(API_BASE + '/api/camaras', { headers: hdr })
+    var cams = await r.json()
+
+    if (!cams.length) {
+      mb.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Sin camaras asignadas</div>'
+      return
+    }
+
+    mb.innerHTML = cams.map(function(c) {
+      return '<div class="cam-card" id="cam-' + c.id + '">' +
+        '<div class="cam-header">' +
+          '<span class="cam-name">' + c.nombre + '</span>' +
+          '<span class="cam-loc">' + (c.ubicacion || '') + '</span>' +
+        '</div>' +
+        '<div class="cam-player-wrap">' +
+          '<video id="vid-' + c.id + '" class="cam-video" playsinline autoplay muted></video>' +
+          '<div class="cam-overlay" id="ovl-' + c.id + '">' +
+            '<button class="cam-play-btn" onclick="playCamera(' + c.id + ',\'' + c.sn + '\',' + (c.canal||0) + ')">' +
+              '<span style="font-size:28px">▶</span><br>' +
+              '<span style="font-size:11px;opacity:.8">Ver en vivo</span>' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    }).join('')
+
+  } catch(e) {
+    mb.innerHTML = '<div style="text-align:center;padding:32px;color:var(--red);font-size:12px">Error: ' + e.message + '</div>'
+  }
+}
+
+async function playCamera(camId, sn, canal) {
+  var ovl = document.getElementById('ovl-' + camId)
+  var vid = document.getElementById('vid-' + camId)
+  if (ovl) ovl.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:8px">Conectando...</div>'
+
+  try {
+    var hdr = getAuthHeader()
+    var r = await fetch(API_BASE + '/api/camaras/' + camId + '/hls', {
+      method: 'POST',
+      headers: Object.assign({}, hdr, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ sn: sn, canal: canal })
+    })
+    var d = await r.json()
+    if (!d.ok) throw new Error(d.error || 'Sin URL')
+
+    var hlsUrl = (d.data && (d.data.hlsUrl || d.data.url)) || d.data
+    if (!hlsUrl || typeof hlsUrl !== 'string') throw new Error('URL HLS no disponible')
+
+    if (ovl) ovl.style.display = 'none'
+
+    if (window.Hls && Hls.isSupported()) {
+      var hls = new Hls({ enableWorker: false, lowLatencyMode: true })
+      hls.loadSource(hlsUrl)
+      hls.attachMedia(vid)
+      hls.on(Hls.Events.ERROR, function(ev, data) {
+        if (data.fatal && ovl) {
+          ovl.style.display = 'flex'
+          ovl.innerHTML = '<div style="color:var(--red);font-size:11px;padding:8px">Error de stream</div>'
+        }
+      })
+      _hlsInstances.push(hls)
+      vid.play().catch(function() {})
+    } else if (vid.canPlayType('application/vnd.apple.mpegurl')) {
+      vid.src = hlsUrl
+      vid.play().catch(function() {})
+    } else {
+      throw new Error('HLS no soportado en este dispositivo')
+    }
+  } catch(e) {
+    if (ovl) {
+      ovl.style.display = 'flex'
+      ovl.innerHTML = '<div style="color:var(--red);font-size:11px;padding:8px">' + e.message + '</div>'
+    }
+  }
+}
+
+// Destruir HLS al cerrar el modulo
+var _origCerrarModulo = null
+document.addEventListener('DOMContentLoaded', function() {
+  var btn = document.querySelector('#modulo-header button[onclick*="cerrar"]')
+  // patch cerrarModulo to also destroy HLS
+})
+var _cerrarModuloOrig = window.cerrarModulo
+window.cerrarModuloConHls = function() {
+  destroyHls()
+  if (typeof _cerrarModuloOrig === 'function') _cerrarModuloOrig()
+  else document.getElementById('modulo-panel') && document.getElementById('modulo-panel').classList.remove('show')
+}
 </script>
 </body>
 </html>
