@@ -2284,13 +2284,13 @@ function destroyHls() {
 async function abrirModuloCamara() {
   var mb = document.getElementById('modulo-body')
   var mp = document.getElementById('modulo-panel')
-  document.getElementById('modulo-titulo').textContent = 'CAMARAS'
+  document.getElementById('modulo-titulo').textContent = 'MIS CAMARAS'
   mb.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando...</div>'
   mp.classList.add('show')
   destroyHls()
 
   try {
-    var hdr = getAuthHeader()
+    var hdr = { Authorization: 'Bearer ' + (getToken() || '') }
     var r = await fetch(API_BASE + '/api/camaras', { headers: hdr })
     var cams = await r.json()
 
@@ -2328,7 +2328,7 @@ async function playCamera(camId, sn, canal) {
   if (ovl) ovl.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:8px">Conectando...</div>'
 
   try {
-    var hdr = getAuthHeader()
+    var hdr = { Authorization: 'Bearer ' + (getToken() || '') }
     var r = await fetch(API_BASE + '/api/camaras/' + camId + '/hls', {
       method: 'POST',
       headers: Object.assign({}, hdr, { 'Content-Type': 'application/json' }),
