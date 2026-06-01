@@ -1838,7 +1838,7 @@ function actualizarBtnMic() {
 
 function toggleMic() {
   if (grabando) {
-    mediaRecorder?.stop()
+    if (typeof window._detenerActual === "function") window._detenerActual(); else mediaRecorder?.stop()
   } else {
     // Feedback visual inmediato antes del await getUserMedia
     const btn = document.getElementById('btn-mic-in')
@@ -1898,7 +1898,7 @@ function iniciarSilenceDetector(stream) {
       if (nivel < UMBRAL) {
         silentMs += 100
         if (silentMs >= SILENCIO && (Date.now() - startTime) >= MIN_AUDIO) {
-          mediaRecorder?.stop()
+          if (typeof window._detenerActual === "function") window._detenerActual(); else mediaRecorder?.stop()
           return
         }
       } else {
@@ -1928,75 +1928,116 @@ async function iniciarEscucha(retryCount = 0) {
     await new Promise(r => setTimeout(r, 600))  // esperar liberación del hardware en Android
   }
   try {
-    const stream   = await navigator.mediaDevices.getUserMedia({ audio: true })
-    micStream      = stream
-    const mimeType = ['audio/webm;codecs=opus','audio/webm','audio/ogg','audio/mp4']
-                       .find(t => MediaRecorder.isTypeSupported(t)) || ''
-    mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {})
-    audioChunks   = []
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } })
+    micStream = stream
 
-    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data) }
+    // ── PCM via ScriptProcessorNode (funciona en Android WebView a diferencia de MediaRecorder) ──
+    const pcmCtx = new (window.AudioContext || window.webkitAudioContext)()
+    const pcmSR  = pcmCtx.sampleRate
+    const pcmSrc = pcmCtx.createMediaStreamSource(stream)
+    const BUFSIZE = 2048
+    const proc   = pcmCtx.createScriptProcessor(BUFSIZE, 1, 1)
+    let pcmChunks = []
+    let recStartTime = Date.now()
+    let silentMs = 0
+    const UMBRAL   = 0.012  // RMS minimo para considerar sonido
+    const SILENCIO = 1800   // ms de silencio para cortar
+    const MIN_DUR  = 600    // ms minimos grabando
 
-    let recStartTime = 0
-    mediaRecorder.onstart = () => {
-      grabando = true
-      recStartTime = Date.now()
-      setAvatarState('listening')
-      actualizarBtnMic()
-      if (navigator.vibrate) navigator.vibrate(50)
-      if (window.Capacitor) {
-        // En Android WebView, AudioContext.createMediaStreamSource no recibe audio mientras
-        // MediaRecorder graba. Usamos timer de maximo 12s en vez del silence detector.
-        silenceTimer = setTimeout(function() {
-          if (grabando && mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop()
-        }, 12000)
-      } else {
-        iniciarSilenceDetector(stream)
-      }
-    }
-
-    mediaRecorder.onstop = async () => {
+    function detenerPCM() {
+      if (!grabando) return
       grabando = false
-      detenerSilenceDetector()
+      if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null }
+      try { proc.disconnect() } catch {}
+      try { pcmSrc.disconnect() } catch {}
       stream.getTracks().forEach(t => t.stop())
       micStream = null
+      pcmCtx.close().catch(() => {})
       actualizarBtnMic()
 
-      const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' })
-      const recDuration = Date.now() - recStartTime
-      if (blob.size < 800 || recDuration < 500) {
-        // Audio demasiado corto o vacío — evita alucinaciones de Whisper
-        setAvatarState('idle')
-        actualizarBtnMic()
-        return
+      // Construir WAV
+      const total = pcmChunks.reduce((a, c) => a + c.length, 0)
+      if (total < pcmSR * 0.4) { setAvatarState('idle'); return }
+      const pcm = new Float32Array(total)
+      let off = 0
+      for (const c of pcmChunks) { pcm.set(c, off); off += c.length }
+
+      // Encode WAV
+      const wavLen = pcm.length * 2
+      const buf = new ArrayBuffer(44 + wavLen)
+      const dv = new DataView(buf)
+      const ws = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)) }
+      ws(0,'RIFF'); dv.setUint32(4, 36 + wavLen, true); ws(8,'WAVE')
+      ws(12,'fmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true)
+      dv.setUint16(22, 1, true); dv.setUint32(24, pcmSR, true)
+      dv.setUint32(28, pcmSR * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true)
+      ws(36,'data'); dv.setUint32(40, wavLen, true)
+      for (let i = 0, p = 44; i < pcm.length; i++, p += 2) {
+        const s = Math.max(-1, Math.min(1, pcm[i]))
+        dv.setInt16(p, s < 0 ? s * 0x8000 : s * 0x7FFF, true)
       }
+      const blob = new Blob([buf], { type: 'audio/wav' })
 
-      setAvatarState('processing')
-      const fd = new FormData()
-      fd.append('audio', blob, 'audio.webm')
-
-      try {
-        const r = await fetch(API_BASE + '/api/transcribir', {
-          method: 'POST',
-          headers: { Authorization: 'Bearer ' + (getToken() || '') },
-          body: fd
-        })
-        const d = await r.json()
-        if (d.texto?.trim()) {
-          inp.value = d.texto.trim()
-          enviar()
-        } else {
+      // Enviar a Whisper
+      ;(async () => {
+        setAvatarState('processing')
+        const fd = new FormData()
+        fd.append('audio', blob, 'audio.wav')
+        try {
+          const r = await fetch(API_BASE + '/api/transcribir', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + (getToken() || '') },
+            body: fd
+          })
+          const d = await r.json()
+          if (d.texto?.trim()) {
+            inp.value = d.texto.trim()
+            enviar()
+          } else {
+            setAvatarState('idle')
+            actualizarBtnMic()
+          }
+        } catch {
           setAvatarState('idle')
           actualizarBtnMic()
+          toast('Error al procesar audio', 't-err')
         }
-      } catch {
-        setAvatarState('idle')
-        actualizarBtnMic()
-        toast('Error al procesar audio', 't-err')
+      })()
+    }
+
+    proc.onaudioprocess = (e) => {
+      if (!grabando) return
+      const data = e.inputBuffer.getChannelData(0)
+      pcmChunks.push(new Float32Array(data))
+      // Deteccion de silencio via RMS
+      let rms = 0
+      for (let i = 0; i < data.length; i++) rms += data[i] * data[i]
+      rms = Math.sqrt(rms / data.length)
+      const elapsed = Date.now() - recStartTime
+      if (rms < UMBRAL) {
+        silentMs += (BUFSIZE / pcmSR) * 1000
+        if (silentMs >= SILENCIO && elapsed >= MIN_DUR) detenerPCM()
+      } else {
+        silentMs = 0
       }
     }
 
-    mediaRecorder.start()
+    // Override toggleMic para detener con ScriptProcessor
+    const _origDetener = window._detenerActual
+    window._detenerActual = detenerPCM
+
+    pcmSrc.connect(proc)
+    proc.connect(pcmCtx.destination)
+
+    grabando = true
+    recStartTime = Date.now()
+    setAvatarState('listening')
+    actualizarBtnMic()
+    if (navigator.vibrate) navigator.vibrate(50)
+
+    // Timer de seguridad: max 12s
+    let safetyTimer = setTimeout(() => { if (grabando) detenerPCM() }, 12000)
+
   } catch (e) {
     console.error('[MIC] Error:', e.name, e.message)
     if (e.name === 'NotAllowedError') {
