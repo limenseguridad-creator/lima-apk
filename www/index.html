@@ -2092,7 +2092,7 @@ window.addEventListener('beforeinstallprompt', e => {
 })
 
 // ════════════════════════════════════════════════════
-//  MODULO CAMARAS (DoLynk HLS)
+//  MODULO CAMARAS (go2rtc P2P)
 // ════════════════════════════════════════════════════
 let _hlsInstances = []
 
@@ -2128,7 +2128,7 @@ async function abrirModuloCamara() {
         '<div class="cam-player-wrap">' +
           '<video id="vid-' + c.id + '" class="cam-video" playsinline autoplay muted></video>' +
           '<div class="cam-overlay" id="ovl-' + c.id + '">' +
-            '<button class="cam-play-btn" onclick="playCamera(' + c.id + ',\'' + c.sn + '\',' + (c.canal||0) + ')">' +
+            '<button class="cam-play-btn" onclick="playCamera(' + c.id + ',\'' + c.sn + '\',' + (c.canal||0) + ',' + JSON.stringify(c.password||'') + ',' + JSON.stringify(c.usuario||'admin') + ')">' +
               '<span style="font-size:28px">▶</span><br>' +
               '<span style="font-size:11px;opacity:.8">Ver en vivo</span>' +
             '</button>' +
@@ -2142,7 +2142,7 @@ async function abrirModuloCamara() {
   }
 }
 
-async function playCamera(camId, sn, canal) {
+async function playCamera(camId, sn, canal, devPass, devUser) {
   var ovl = document.getElementById('ovl-' + camId)
   var vid = document.getElementById('vid-' + camId)
   if (ovl) ovl.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:8px">Conectando...</div>'
@@ -2152,18 +2152,23 @@ async function playCamera(camId, sn, canal) {
     var r = await fetch(API_BASE + '/api/camaras/' + camId + '/hls', {
       method: 'POST',
       headers: Object.assign({}, hdr, { 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ sn: sn, canal: canal })
+      body: JSON.stringify({ sn: sn, canal: canal, password: devPass, usuario: devUser })
     })
     var d = await r.json()
     if (!d.ok) throw new Error(d.error || 'Sin URL')
 
-    var hlsUrl = (d.data && (d.data.hlsUrl || d.data.url)) || d.data
-    if (!hlsUrl || typeof hlsUrl !== 'string') throw new Error('URL HLS no disponible')
+    if (!d.hls_url) throw new Error('URL HLS no disponible')
+    var hlsUrl = API_BASE + d.hls_url
+    var token = getToken() || ''
 
     if (ovl) ovl.style.display = 'none'
 
     if (window.Hls && Hls.isSupported()) {
-      var hls = new Hls({ enableWorker: false, lowLatencyMode: true })
+      var hls = new Hls({
+        enableWorker: false,
+        lowLatencyMode: true,
+        xhrSetup: function(xhr) { xhr.setRequestHeader('Authorization', 'Bearer ' + token) }
+      })
       hls.loadSource(hlsUrl)
       hls.attachMedia(vid)
       hls.on(Hls.Events.ERROR, function(ev, data) {
@@ -2175,7 +2180,7 @@ async function playCamera(camId, sn, canal) {
       _hlsInstances.push(hls)
       vid.play().catch(function() {})
     } else if (vid.canPlayType('application/vnd.apple.mpegurl')) {
-      vid.src = hlsUrl
+      vid.src = hlsUrl  // native HLS (iOS Safari)
       vid.play().catch(function() {})
     } else {
       throw new Error('HLS no soportado en este dispositivo')
