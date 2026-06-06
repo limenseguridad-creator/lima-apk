@@ -1,5 +1,13 @@
 # Changelog — Lima APK
 
+## Build 52 — 2026-06-06
+### Fix: Botón Ver en Vivo no visible en Android
+- cam-overlay: z-index:10 para quedar sobre el elemento video nativo.
+- Video template: eliminado atributo autoplay (se activaba sin fuente y creaba surface hardware en WebView que tapaba el overlay).
+- El botón Ver en Vivo ahora es visible al cargar la lista de camaras.
+- Compatible con Dahua P2P directo (Novello cam1) y DoLynk (Fiorini 8 cams).
+
+
 ## Build 51 - 2026-05-31
 ### Feature: Modulo Camaras (DoLynk HLS)
 - Boton Camaras reemplaza Mi Edificio en la barra lateral derecha.
