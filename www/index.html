@@ -809,18 +809,27 @@ async function enviar() {
   setTyping(true); btnSend.disabled = true
   setAvatarState('processing')
   const u = getUsuario()
+  let d;
   try {
     const r = await fetch(API, {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+(getToken()||'')},
       body: JSON.stringify({ texto, usuario: u?.nombre || 'usuario' })
     })
-    const d = await r.json()
     if (r.status === 401) { logout(); return }
-    handleRespuesta(d)
-  } catch {
+    d = await r.json()
+  } catch (err) {
+    console.error('Fetch error:', err)
     setTyping(false); btnSend.disabled=false; setAvatarState('idle')
     addMsg('Error de conexión con LIMA.','lima','error'); beepErr()
+    return
+  }
+  
+  try {
+    handleRespuesta(d)
+  } catch (err) {
+    console.error('Error in handleRespuesta:', err)
+    setTyping(false); btnSend.disabled=false; setAvatarState('idle')
   }
 }
 
@@ -1551,13 +1560,13 @@ function accionBtn(tipo) {
 //  TTS — Síntesis de voz
 // ════════════════════════════════════════════════════
 function hablarRespuesta(texto) {
-  if (!ttsEnabled || !texto) {
+  if (!ttsEnabled || !texto || !window.speechSynthesis) {
     setAvatarState('idle')
     setWaveState('idle')
     actualizarBtnMic()
     return
   }
-  window.speechSynthesis.cancel()
+  try { window.speechSynthesis.cancel() } catch(e) {}
   const utter = new SpeechSynthesisUtterance(texto)
   utter.lang  = 'es-AR'
   utter.rate  = 1.05
@@ -1586,7 +1595,9 @@ function hablarRespuesta(texto) {
     setWaveState('idle')
     actualizarBtnMic()
   }
-  window.speechSynthesis.speak(utter)
+  try {
+    window.speechSynthesis.speak(utter)
+  } catch(e) { console.error('TTS Speak error:', e) }
 }
 
 // ════════════════════════════════════════════════════
