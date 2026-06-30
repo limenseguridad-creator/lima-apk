@@ -2245,5 +2245,66 @@ window.cerrarModuloConHls = function() {
   if (typeof _cerrarModuloOrig === 'function') _cerrarModuloOrig()
   else document.getElementById('modulo-panel') && document.getElementById('modulo-panel').classList.remove('show')
 }
+
+// ════════════════════════════════════════════════════
+//  WAKE WORD "LIMA" (Escucha continua)
+// ════════════════════════════════════════════════════
+let wakeWordRec = null;
+function iniciarWakeWord() {
+  const SRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SRec) return;
+  if (wakeWordRec) { try { wakeWordRec.stop(); } catch(e){} }
+  wakeWordRec = new SRec();
+  wakeWordRec.continuous = true;
+  wakeWordRec.interimResults = false;
+  wakeWordRec.lang = 'es-AR';
+  
+  wakeWordRec.onresult = (e) => {
+    if (grabando) return; // Si ya está usando el mic nativo PCM, ignorar
+    const result = e.results[e.results.length - 1];
+    if (!result.isFinal) return;
+    const transcript = result[0].transcript.trim().toLowerCase();
+    console.log('[WakeWord] Escuchó:', transcript);
+    
+    if (transcript.includes('lima')) {
+      // Extraer lo que dijo después de "lima"
+      const partes = transcript.split('lima');
+      const comando = partes.slice(1).join('lima').trim();
+      
+      if (comando.length > 2) {
+        // Enviar el comando directamente por texto
+        const inpEl = document.getElementById('inp');
+        if (inpEl) {
+          inpEl.value = comando;
+          if (typeof enviar === 'function') enviar();
+        }
+      } else {
+        // Solo dijo "lima", despertar y escuchar usando el mic principal
+        toast('LIMA escuchando...', 't-ok');
+        if (typeof toggleMic === 'function') toggleMic();
+      }
+    }
+  };
+  
+  wakeWordRec.onend = () => {
+    // Reiniciar automáticamente para escucha continua si sigue logueado
+    if (getToken() && !grabando) {
+      setTimeout(() => {
+        try { wakeWordRec.start(); } catch (e) {}
+      }, 500);
+    }
+  };
+  
+  try { wakeWordRec.start(); } catch (e) {}
+}
+
+// Enganchar el Wake Word al inicio de sesión y carga
+const _oldHacerLogin = window.hacerLogin;
+window.hacerLogin = async function() {
+  if (typeof _oldHacerLogin === 'function') await _oldHacerLogin();
+  if (getToken()) iniciarWakeWord();
+}
+if (getToken()) setTimeout(iniciarWakeWord, 2000);
+
 </script>
 </body></html>
