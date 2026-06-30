@@ -406,7 +406,7 @@ body.st-panico    .sc-ico svg{stroke:var(--orange)}
 // ════════════════════════════════════════════════════
 //  CONFIG
 // ════════════════════════════════════════════════════
-const API_BASE = 'https://lima.limenseguridad.com'
+const API_BASE = 'https://limaguard.ldtp.com'
 const API = API_BASE + '/comando'
 const TK  = 'lima_token'
 const UK  = 'lima_user'
@@ -1270,7 +1270,7 @@ let _voipActiva   = false
 function voipConectar() {
   const token = getToken()
   if (!token || _voipSocket) return
-  _voipSocket = io('https://lima.limenseguridad.com', {
+  _voipSocket = io('https://limaguard.ldtp.com', {
     path: '/voip',
     auth: { token },
     transports: ['polling', 'websocket'],
