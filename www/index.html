@@ -1559,45 +1559,59 @@ function accionBtn(tipo) {
 // ════════════════════════════════════════════════════
 //  TTS — Síntesis de voz
 // ════════════════════════════════════════════════════
+let ttsAudioObj = null;
+
 function hablarRespuesta(texto) {
-  if (!ttsEnabled || !texto || !window.speechSynthesis) {
-    setAvatarState('idle')
-    setWaveState('idle')
-    actualizarBtnMic()
-    return
+  if (!ttsEnabled || !texto) {
+    setAvatarState('idle');
+    setWaveState('idle');
+    actualizarBtnMic();
+    return;
   }
+  
+  if (ttsAudioObj) {
+    ttsAudioObj.pause();
+    ttsAudioObj = null;
+  }
+  
   try { window.speechSynthesis.cancel() } catch(e) {}
-  const utter = new SpeechSynthesisUtterance(texto)
-  utter.lang  = 'es-AR'
-  utter.rate  = 1.05
-  utter.pitch = 1.0
-  utter.onstart = () => {
-    setAvatarState('speaking')
-    setWaveState('speaking')
-  }
-  utter.onboundary = (e) => {
-    if (e.name === 'word') {
-      // Pulso de amplitud por cada palabra
-      voiceWave.target = 18 + Math.random() * 16
-      voiceWave.freq   = 2.5 + Math.random() * 3
-      // Decae suavemente hasta el próximo pulso
-      clearTimeout(voiceWave._t)
-      voiceWave._t = setTimeout(() => { voiceWave.target = 8 + Math.random() * 8 }, 120)
-    }
-  }
-  utter.onend = () => {
-    setAvatarState('idle')
-    setWaveState('idle')
-    actualizarBtnMic()
-  }
-  utter.onerror = () => {
-    setAvatarState('idle')
-    setWaveState('idle')
-    actualizarBtnMic()
-  }
-  try {
-    window.speechSynthesis.speak(utter)
-  } catch(e) { console.error('TTS Speak error:', e) }
+  
+  setAvatarState('speaking');
+  setWaveState('speaking');
+  
+  // Usar el endpoint de Piper TTS en el backend
+  const url = API_BASE + '/api/interna/tts?text=' + encodeURIComponent(texto);
+  ttsAudioObj = new Audio(url);
+  
+  // Simular la onda de voz mientras se reproduce
+  const waveInt = setInterval(() => {
+    voiceWave.target = 15 + Math.random() * 15;
+    voiceWave.freq = 2.5 + Math.random() * 2;
+    setTimeout(() => { voiceWave.target = 8 + Math.random() * 5 }, 120);
+  }, 300);
+
+  ttsAudioObj.onended = () => {
+    clearInterval(waveInt);
+    setAvatarState('idle');
+    setWaveState('idle');
+    actualizarBtnMic();
+  };
+  
+  ttsAudioObj.onerror = () => {
+    console.error('Error reproduciendo Piper TTS');
+    clearInterval(waveInt);
+    setAvatarState('idle');
+    setWaveState('idle');
+    actualizarBtnMic();
+  };
+  
+  ttsAudioObj.play().catch(e => {
+    console.error('Error play TTS:', e);
+    clearInterval(waveInt);
+    setAvatarState('idle');
+    setWaveState('idle');
+    actualizarBtnMic();
+  });
 }
 
 // ════════════════════════════════════════════════════
