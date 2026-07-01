@@ -1561,7 +1561,7 @@ function accionBtn(tipo) {
 // ════════════════════════════════════════════════════
 let ttsAudioObj = null;
 
-function hablarRespuesta(texto) {
+async function hablarRespuesta(texto) {
   if (!ttsEnabled || !texto) {
     setAvatarState('idle');
     setWaveState('idle');
@@ -1579,39 +1579,54 @@ function hablarRespuesta(texto) {
   setAvatarState('speaking');
   setWaveState('speaking');
   
-  // Usar el endpoint de Piper TTS en el backend
-  const url = API_BASE + '/api/interna/tts?text=' + encodeURIComponent(texto);
-  ttsAudioObj = new Audio(url);
-  
-  // Simular la onda de voz mientras se reproduce
-  const waveInt = setInterval(() => {
-    voiceWave.target = 15 + Math.random() * 15;
-    voiceWave.freq = 2.5 + Math.random() * 2;
-    setTimeout(() => { voiceWave.target = 8 + Math.random() * 5 }, 120);
-  }, 300);
+  // Usar el endpoint de Piper TTS en el backend (POST con JWT)
+  try {
+    const res = await fetch(API_BASE + '/api/tts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (getToken() || '')
+      },
+      body: JSON.stringify({ texto: texto })
+    });
+    
+    if (!res.ok) throw new Error('TTS falló con status: ' + res.status);
+    
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    ttsAudioObj = new Audio(url);
+    
+    // Simular la onda de voz mientras se reproduce
+    const waveInt = setInterval(() => {
+      voiceWave.target = 15 + Math.random() * 15;
+      voiceWave.freq = 2.5 + Math.random() * 2;
+      setTimeout(() => { voiceWave.target = 8 + Math.random() * 5 }, 120);
+    }, 300);
 
-  ttsAudioObj.onended = () => {
-    clearInterval(waveInt);
-    setAvatarState('idle');
-    setWaveState('idle');
-    actualizarBtnMic();
-  };
-  
-  ttsAudioObj.onerror = () => {
-    console.error('Error reproduciendo Piper TTS');
-    clearInterval(waveInt);
-    setAvatarState('idle');
-    setWaveState('idle');
-    actualizarBtnMic();
-  };
-  
-  ttsAudioObj.play().catch(e => {
+    ttsAudioObj.onended = () => {
+      clearInterval(waveInt);
+      setAvatarState('idle');
+      setWaveState('idle');
+      actualizarBtnMic();
+      URL.revokeObjectURL(url);
+    };
+    
+    ttsAudioObj.onerror = () => {
+      console.error('Error reproduciendo Piper TTS');
+      clearInterval(waveInt);
+      setAvatarState('idle');
+      setWaveState('idle');
+      actualizarBtnMic();
+      URL.revokeObjectURL(url);
+    };
+    
+    await ttsAudioObj.play();
+  } catch(e) {
     console.error('Error play TTS:', e);
-    clearInterval(waveInt);
     setAvatarState('idle');
     setWaveState('idle');
     actualizarBtnMic();
-  });
+  }
 }
 
 // ════════════════════════════════════════════════════
