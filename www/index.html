@@ -2282,6 +2282,11 @@ function iniciarWakeWord() {
     console.log('[WakeWord] Escuchó:', transcript);
     
     if (transcript.includes('lima')) {
+      // Feedback visual y táctil inmediato
+      toast('LIMA escuchando...', 't-ok');
+      setAvatarState('processing');
+      try { navigator.vibrate(50); } catch(e){}
+      
       // Extraer lo que dijo después de "lima"
       const partes = transcript.split('lima');
       const comando = partes.slice(1).join('lima').trim();
