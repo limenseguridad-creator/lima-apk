@@ -1270,7 +1270,7 @@ let _voipActiva   = false
 function voipConectar() {
   const token = getToken()
   if (!token || _voipSocket) return
-  _voipSocket = io('https://lima.limenseguridad.com', {
+  _voipSocket = io(API_BASE, {
     path: '/voip',
     auth: { token },
     transports: ['polling', 'websocket'],
@@ -2264,6 +2264,32 @@ window.cerrarModuloConHls = function() {
 // ════════════════════════════════════════════════════
 //  WAKE WORD "LIMA" (Escucha continua)
 // ════════════════════════════════════════════════════
+// Utilidad para Beeps
+let _beepCtx = null;
+function playLimaBeep() {
+  try {
+    if (!_beepCtx) _beepCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_beepCtx.state === 'suspended') _beepCtx.resume();
+    
+    // Secuencia de beeps: bip bip buup
+    const freqs = [880, 880, 660];
+    const times = [0, 0.15, 0.35];
+    const durs  = [0.1, 0.1, 0.2];
+    
+    freqs.forEach((f, i) => {
+      const osc = _beepCtx.createOscillator();
+      const gain = _beepCtx.createGain();
+      osc.connect(gain); gain.connect(_beepCtx.destination);
+      osc.frequency.value = f;
+      gain.gain.setValueAtTime(0.0, _beepCtx.currentTime + times[i]);
+      gain.gain.linearRampToValueAtTime(0.4, _beepCtx.currentTime + times[i] + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, _beepCtx.currentTime + times[i] + durs[i]);
+      osc.start(_beepCtx.currentTime + times[i]);
+      osc.stop(_beepCtx.currentTime + times[i] + durs[i]);
+    });
+  } catch(e) {}
+}
+
 let wakeWordRec = null;
 function iniciarWakeWord() {
   const SRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2286,6 +2312,7 @@ function iniciarWakeWord() {
       toast('LIMA escuchando...', 't-ok');
       setAvatarState('processing');
       try { navigator.vibrate(50); } catch(e){}
+      playLimaBeep();
       
       // Extraer lo que dijo después de "lima"
       const partes = transcript.split('lima');
