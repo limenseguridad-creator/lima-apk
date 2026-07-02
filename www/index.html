@@ -1560,6 +1560,7 @@ function accionBtn(tipo) {
 //  TTS — Síntesis de voz
 // ════════════════════════════════════════════════════
 let ttsAudioObj = null;
+window.limaHablando = false;
 
 async function hablarRespuesta(texto) {
   if (!ttsEnabled || !texto) {
@@ -1609,6 +1610,7 @@ async function hablarRespuesta(texto) {
       setWaveState('idle');
       actualizarBtnMic();
       URL.revokeObjectURL(url);
+      window.limaHablando = false;
     };
     
     ttsAudioObj.onerror = () => {
@@ -1618,14 +1620,17 @@ async function hablarRespuesta(texto) {
       setWaveState('idle');
       actualizarBtnMic();
       URL.revokeObjectURL(url);
+      window.limaHablando = false;
     };
     
+    window.limaHablando = true;
     await ttsAudioObj.play();
   } catch(e) {
     console.error('Error play TTS:', e);
     setAvatarState('idle');
     setWaveState('idle');
     actualizarBtnMic();
+    window.limaHablando = false;
   }
 }
 
@@ -2301,7 +2306,7 @@ function iniciarWakeWord() {
   wakeWordRec.lang = 'es-AR';
   
   wakeWordRec.onresult = (e) => {
-    if (grabando) return; // Si ya está usando el mic nativo PCM, ignorar
+    if (grabando || window.limaHablando) return; // Ignorar si mic está activo o Lima está hablando
     const result = e.results[e.results.length - 1];
     if (!result.isFinal) return;
     const transcript = result[0].transcript.trim().toLowerCase();
