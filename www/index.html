@@ -832,17 +832,25 @@ async function enviar() {
   const u = getUsuario()
   let d;
   try {
+    const ctrl = new AbortController()
+    const tid = setTimeout(() => ctrl.abort(), 20000) // Timeout de 20s para IA
     const r = await fetch(API, {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+(getToken()||'')},
-      body: JSON.stringify({ texto, usuario: u?.nombre || 'usuario' })
+      body: JSON.stringify({ texto, usuario: u?.nombre || 'usuario' }),
+      signal: ctrl.signal
     })
+    clearTimeout(tid)
     if (r.status === 401) { logout(); return }
     d = await r.json()
   } catch (err) {
     console.error('Fetch error:', err)
     setTyping(false); btnSend.disabled=false; setAvatarState('idle')
-    addMsg('Error de conexión con LIMA.','lima','error'); beepErr()
+    if (err.name === 'AbortError') {
+      addMsg('Los servidores de IA están saturados. Intenta de nuevo más tarde.', 'lima', 'error'); beepErr();
+    } else {
+      addMsg('Error de conexión con el servidor.', 'lima', 'error'); beepErr();
+    }
     return
   }
   
@@ -1771,28 +1779,51 @@ async function iniciarEscucha(retryCount = 0) {
   if (localRec) { try { localRec.stop(); } catch(e){} }
   
   localRec = new SRec();
-  localRec.continuous = false;
-  localRec.interimResults = false;
+  localRec.continuous = true; // Usar continuous para evitar cortes prematuros
+  localRec.interimResults = true; // Mostrar texto mientras habla
   localRec.lang = 'es-AR';
+
+  let txtEscuchado = '';
+  let silenceTimer = null;
+
+  const procesar = () => {
+    if (silenceTimer) clearTimeout(silenceTimer);
+    try { localRec.stop(); } catch(e){}
+    if (txtEscuchado.trim() !== '') {
+      inp.value = txtEscuchado.trim();
+      enviar();
+    } else {
+      grabando = false;
+      setAvatarState('idle');
+      actualizarBtnMic();
+    }
+  };
 
   localRec.onstart = () => {
     grabando = true;
     setAvatarState('listening');
     actualizarBtnMic();
     if (navigator.vibrate) navigator.vibrate(50);
+    // Timeout absoluto de seguridad (10s máximo por frase)
+    silenceTimer = setTimeout(procesar, 10000);
   };
 
   localRec.onresult = (e) => {
-    const result = e.results[e.results.length - 1];
-    if (result.isFinal) {
-      const transcript = result[0].transcript.trim();
-      inp.value = transcript;
-      enviar();
+    let t = '';
+    for(let i=0; i<e.results.length; i++){
+      t += e.results[i][0].transcript;
     }
+    txtEscuchado = t;
+    inp.value = t;
+    
+    // Reiniciar el timer de silencio (si deja de hablar por 2s, corta automático)
+    if (silenceTimer) clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(procesar, 2500);
   };
 
   localRec.onerror = (e) => {
     console.error('Error SpeechRecognition:', e.error);
+    if (silenceTimer) clearTimeout(silenceTimer);
     if (e.error !== 'no-speech') {
       toast('Error al escuchar: ' + e.error, 't-err');
     }
@@ -1802,6 +1833,7 @@ async function iniciarEscucha(retryCount = 0) {
   };
 
   localRec.onend = () => {
+    if (silenceTimer) clearTimeout(silenceTimer);
     grabando = false;
     if (document.getElementById('avatar-container').className !== 'processing') {
       setAvatarState('idle');
@@ -1811,9 +1843,8 @@ async function iniciarEscucha(retryCount = 0) {
 
   try { 
     localRec.start(); 
-    window._detenerActual = () => {
-      try { localRec.stop(); } catch(e) {}
-    };
+    // Si el usuario toca el botón 'DETENER' manualmente
+    window._detenerActual = procesar;
   } catch (e) {
     grabando = false;
     setAvatarState('idle');
