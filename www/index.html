@@ -1820,36 +1820,6 @@ async function iniciarEscucha(retryCount = 0) {
     actualizarBtnMic();
     toast('No se pudo iniciar el micrófono', 't-err');
   }
-    console.error('[MIC] Error:', e.name, e.message)
-    if (e.name === 'NotAllowedError') {
-      actualizarBtnMic()
-      toast('Permiso de micrófono denegado', 't-err')
-    } else if (e.name === 'NotFoundError') {
-      actualizarBtnMic()
-      toast('Sin micrófono', 't-err')
-    } else if (e.name === 'NotReadableError') {
-      // Mic is busy — auto-retry up to 3 times with increasing delay before showing error
-      if (retryCount < 3) {
-        const delay = (retryCount + 1) * 2500  // 2.5s, 5s, 7.5s
-        console.warn('[MIC] NotReadableError, reintentando en', delay, 'ms (intento', retryCount + 1, 'de 3)')
-        setTimeout(() => iniciarEscucha(retryCount + 1), delay)
-        return
-      }
-      actualizarBtnMic()
-      // Show message with retry button in chat (only after all retries failed)
-      document.getElementById('chat-empty').style.display = 'none'
-      const wrap = document.createElement('div'); wrap.className = 'msg lima'
-      wrap.innerHTML = '<div class="msg-av" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center">L</div>' +
-        '<div class="msg-inner"><div class="msg-bubble" style="display:flex;flex-direction:column;gap:6px">' +
-        '<span>Micrófono ocupado. Cerrá otras apps que usen el micrófono y reintentá.</span>' +
-        '<button onclick="reintentarMic(this)" style="background:var(--p);color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:1px">🎙 REINTENTAR</button>' +
-        '</div></div>'
-      document.getElementById('chat').insertBefore(wrap, document.getElementById('typing'))
-    } else {
-      actualizarBtnMic()
-      toast('Mic error: ' + e.name, 't-err')
-    }
-  }
 }
 
 // Reintentar mic desde botón en chat (después de NotReadableError)
