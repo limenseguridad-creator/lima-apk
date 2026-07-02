@@ -808,6 +808,27 @@ async function enviar() {
   inp.value = ''; inp.style.height = 'auto'
   setTyping(true); btnSend.disabled = true
   setAvatarState('processing')
+  
+  // ── LIMA 3.0: Cerebro Básico Local (Híbrido) ──
+  // Si coincide con comandos críticos, no enviamos a la IA de Groq
+  const txtLow = texto.toLowerCase()
+  if (txtLow === 'activar alarma' || txtLow === 'armar alarma') {
+    handleRespuesta({ respuesta: 'Enviando orden para activar el sistema.', intent: 'activar' });
+    return;
+  }
+  if (txtLow.includes('botón de pánico') || txtLow.includes('boton de panico')) {
+    handleRespuesta({ respuesta: 'Pánico activado. Notificando a la central.', intent: 'panico' });
+    return;
+  }
+  if (txtLow.match(/desactivar alarma con c[oó]digo \d{4}/) || txtLow.match(/desarmar alarma con c[oó]digo \d{4}/)) {
+    handleRespuesta({ respuesta: 'Código recibido, desactivando alarma.', intent: 'desactivar' });
+    return;
+  }
+  if (txtLow === 'desactivar alarma' || txtLow === 'desarmar alarma' || txtLow === 'desarmar') {
+    handleRespuesta({ respuesta: 'Por favor, decime tu código de 4 dígitos para desarmar la alarma.', intent: 'chat', esperandoPin: true });
+    return;
+  }
+
   const u = getUsuario()
   let d;
   try {
@@ -1736,133 +1757,69 @@ function iniciarSilenceDetector(stream) {
   }
 }
 
+let localRec = null;
+
 async function iniciarEscucha(retryCount = 0) {
-  if (grabando) return
-  if (!navigator.mediaDevices?.getUserMedia) {
-    actualizarBtnMic()
-    toast('Micrófono no disponible en este dispositivo', 't-err')
-    return
+  if (grabando) return;
+  const SRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SRec) {
+    actualizarBtnMic();
+    toast('Reconocimiento de voz no soportado en este dispositivo', 't-err');
+    return;
   }
-  // Release any lingering stream and AudioContext before requesting new one
-  // On Android, hardware doesn't release instantly — need a brief delay after stop()
-  if (audioCtx) { try { audioCtx.close() } catch {} ; audioCtx = null ; analyser = null }
-  if (micStream) {
-    try { micStream.getTracks().forEach(t => t.stop()) } catch {}
-    micStream = null
-    await new Promise(r => setTimeout(r, 600))  // esperar liberación del hardware en Android
-  }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } })
-    micStream = stream
 
-    // ── PCM via ScriptProcessorNode (funciona en Android WebView a diferencia de MediaRecorder) ──
-    const pcmCtx = new (window.AudioContext || window.webkitAudioContext)()
-    const pcmSR  = pcmCtx.sampleRate
-    const pcmSrc = pcmCtx.createMediaStreamSource(stream)
-    const BUFSIZE = 2048
-    const proc   = pcmCtx.createScriptProcessor(BUFSIZE, 1, 1)
-    let pcmChunks = []
-    let recStartTime = Date.now()
-    let silentMs = 0
-    const UMBRAL   = 0.012  // RMS minimo para considerar sonido
-    const SILENCIO = 1800   // ms de silencio para cortar
-    const MIN_DUR  = 600    // ms minimos grabando
+  if (localRec) { try { localRec.stop(); } catch(e){} }
+  
+  localRec = new SRec();
+  localRec.continuous = false;
+  localRec.interimResults = false;
+  localRec.lang = 'es-AR';
 
-    function detenerPCM() {
-      if (!grabando) return
-      grabando = false
-      if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null }
-      try { proc.disconnect() } catch {}
-      try { pcmSrc.disconnect() } catch {}
-      stream.getTracks().forEach(t => t.stop())
-      micStream = null
-      pcmCtx.close().catch(() => {})
-      actualizarBtnMic()
+  localRec.onstart = () => {
+    grabando = true;
+    setAvatarState('listening');
+    actualizarBtnMic();
+    if (navigator.vibrate) navigator.vibrate(50);
+  };
 
-      // Construir WAV
-      const total = pcmChunks.reduce((a, c) => a + c.length, 0)
-      if (total < pcmSR * 0.4) { setAvatarState('idle'); return }
-      const pcm = new Float32Array(total)
-      let off = 0
-      for (const c of pcmChunks) { pcm.set(c, off); off += c.length }
-
-      // Encode WAV
-      const wavLen = pcm.length * 2
-      const buf = new ArrayBuffer(44 + wavLen)
-      const dv = new DataView(buf)
-      const ws = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)) }
-      ws(0,'RIFF'); dv.setUint32(4, 36 + wavLen, true); ws(8,'WAVE')
-      ws(12,'fmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true)
-      dv.setUint16(22, 1, true); dv.setUint32(24, pcmSR, true)
-      dv.setUint32(28, pcmSR * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true)
-      ws(36,'data'); dv.setUint32(40, wavLen, true)
-      for (let i = 0, p = 44; i < pcm.length; i++, p += 2) {
-        const s = Math.max(-1, Math.min(1, pcm[i]))
-        dv.setInt16(p, s < 0 ? s * 0x8000 : s * 0x7FFF, true)
-      }
-      const blob = new Blob([buf], { type: 'audio/wav' })
-
-      // Enviar a Whisper
-      ;(async () => {
-        setAvatarState('processing')
-        const fd = new FormData()
-        fd.append('audio', blob, 'audio.wav')
-        try {
-          const r = await fetch(API_BASE + '/api/transcribir', {
-            method: 'POST',
-            headers: { Authorization: 'Bearer ' + (getToken() || '') },
-            body: fd
-          })
-          const d = await r.json()
-          if (d.texto?.trim()) {
-            inp.value = d.texto.trim()
-            enviar()
-          } else {
-            setAvatarState('idle')
-            actualizarBtnMic()
-          }
-        } catch {
-          setAvatarState('idle')
-          actualizarBtnMic()
-          toast('Error al procesar audio', 't-err')
-        }
-      })()
+  localRec.onresult = (e) => {
+    const result = e.results[e.results.length - 1];
+    if (result.isFinal) {
+      const transcript = result[0].transcript.trim();
+      inp.value = transcript;
+      enviar();
     }
+  };
 
-    proc.onaudioprocess = (e) => {
-      if (!grabando) return
-      const data = e.inputBuffer.getChannelData(0)
-      pcmChunks.push(new Float32Array(data))
-      // Deteccion de silencio via RMS
-      let rms = 0
-      for (let i = 0; i < data.length; i++) rms += data[i] * data[i]
-      rms = Math.sqrt(rms / data.length)
-      const elapsed = Date.now() - recStartTime
-      if (rms < UMBRAL) {
-        silentMs += (BUFSIZE / pcmSR) * 1000
-        if (silentMs >= SILENCIO && elapsed >= MIN_DUR) detenerPCM()
-      } else {
-        silentMs = 0
-      }
+  localRec.onerror = (e) => {
+    console.error('Error SpeechRecognition:', e.error);
+    if (e.error !== 'no-speech') {
+      toast('Error al escuchar: ' + e.error, 't-err');
     }
+    grabando = false;
+    setAvatarState('idle');
+    actualizarBtnMic();
+  };
 
-    // Override toggleMic para detener con ScriptProcessor
-    const _origDetener = window._detenerActual
-    window._detenerActual = detenerPCM
+  localRec.onend = () => {
+    grabando = false;
+    if (document.getElementById('avatar-container').className !== 'processing') {
+      setAvatarState('idle');
+    }
+    actualizarBtnMic();
+  };
 
-    pcmSrc.connect(proc)
-    proc.connect(pcmCtx.destination)
-
-    grabando = true
-    recStartTime = Date.now()
-    setAvatarState('listening')
-    actualizarBtnMic()
-    if (navigator.vibrate) navigator.vibrate(50)
-
-    // Timer de seguridad: max 12s
-    let safetyTimer = setTimeout(() => { if (grabando) detenerPCM() }, 12000)
-
+  try { 
+    localRec.start(); 
+    window._detenerActual = () => {
+      try { localRec.stop(); } catch(e) {}
+    };
   } catch (e) {
+    grabando = false;
+    setAvatarState('idle');
+    actualizarBtnMic();
+    toast('No se pudo iniciar el micrófono', 't-err');
+  }
     console.error('[MIC] Error:', e.name, e.message)
     if (e.name === 'NotAllowedError') {
       actualizarBtnMic()
